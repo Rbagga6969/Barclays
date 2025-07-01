@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Eye, FileText, Download, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Eye, FileText, Download, AlertTriangle, CheckCircle, Clock, XCircle, Shield, User } from 'lucide-react';
 import { EquityTrade, FXTrade } from '../types/trade';
 import TradeConfirmationModal from './TradeConfirmationModal';
 
 interface TradeTableProps {
   trades: (EquityTrade | FXTrade)[];
   tradeType: 'equity' | 'fx' | 'all';
+  onSelectTradeForDocs?: (trade: EquityTrade | FXTrade) => void;
 }
 
-const TradeTable: React.FC<TradeTableProps> = ({ trades, tradeType }) => {
+const TradeTable: React.FC<TradeTableProps> = ({ trades, tradeType, onSelectTradeForDocs }) => {
   const [selectedTrade, setSelectedTrade] = useState<EquityTrade | FXTrade | null>(null);
   const [showModal, setShowModal] = useState(false);
 
@@ -27,7 +28,7 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades, tradeType }) => {
       case 'cancelled':
         return <XCircle className="h-4 w-4 text-gray-500" />;
       case 'disputed':
-        return <AlertCircle className="h-4 w-4 text-orange-500" />;
+        return <AlertTriangle className="h-4 w-4 text-orange-500" />;
       default:
         return <Clock className="h-4 w-4 text-gray-400" />;
     }
@@ -50,6 +51,24 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades, tradeType }) => {
         return `${baseClasses} bg-gray-100 text-gray-800`;
       case 'disputed':
         return `${baseClasses} bg-orange-100 text-orange-800`;
+      default:
+        return `${baseClasses} bg-gray-100 text-gray-600`;
+    }
+  };
+
+  const getRiskBadge = (riskLevel?: string) => {
+    if (!riskLevel) return null;
+    
+    const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
+    switch (riskLevel.toLowerCase()) {
+      case 'critical':
+        return `${baseClasses} bg-red-100 text-red-800`;
+      case 'high':
+        return `${baseClasses} bg-orange-100 text-orange-800`;
+      case 'medium':
+        return `${baseClasses} bg-yellow-100 text-yellow-800`;
+      case 'low':
+        return `${baseClasses} bg-green-100 text-green-800`;
       default:
         return `${baseClasses} bg-gray-100 text-gray-600`;
     }
@@ -105,6 +124,9 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades, tradeType }) => {
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Risk Level
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Trade Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -117,6 +139,12 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades, tradeType }) => {
                 <tr key={trade.tradeId} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {trade.tradeId}
+                    {trade.failureReason && (
+                      <div className="text-xs text-red-600 mt-1" title={trade.failureReason}>
+                        <AlertTriangle className="h-3 w-3 inline mr-1" />
+                        Issue Detected
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {isEquityTrade(trade) ? (
@@ -160,6 +188,13 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades, tradeType }) => {
                       </span>
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {trade.riskLevel && (
+                      <span className={getRiskBadge(trade.riskLevel)}>
+                        {trade.riskLevel}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {trade.tradeDate}
                   </td>
@@ -176,6 +211,15 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades, tradeType }) => {
                         <Download className="h-3 w-3 mr-1" />
                         PDF
                       </button>
+                      {onSelectTradeForDocs && (
+                        <button
+                          onClick={() => onSelectTradeForDocs(trade)}
+                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                        >
+                          <FileText className="h-3 w-3 mr-1" />
+                          Docs
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

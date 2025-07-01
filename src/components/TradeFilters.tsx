@@ -1,5 +1,5 @@
 import React from 'react';
-import { Filter, Calendar, DollarSign, User, Building } from 'lucide-react';
+import { Filter, Calendar, DollarSign, User, Building, AlertTriangle, FileText } from 'lucide-react';
 import { TradeFilters } from '../types/trade';
 
 interface TradeFiltersProps {
@@ -25,10 +25,10 @@ const TradeFiltersComponent: React.FC<TradeFiltersProps> = ({
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
       <div className="flex items-center mb-4">
         <Filter className="h-5 w-5 text-blue-600 mr-2" />
-        <h3 className="text-lg font-semibold text-gray-900">Trade Filters</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Advanced Trade Filters</h3>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-9 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Trade Type
@@ -138,6 +138,41 @@ const TradeFiltersComponent: React.FC<TradeFiltersProps> = ({
             {traders.map(trader => (
               <option key={trader} value={trader}>{trader}</option>
             ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            <AlertTriangle className="inline h-4 w-4 mr-1" />
+            Risk Level
+          </label>
+          <select
+            value={filters.riskLevel}
+            onChange={(e) => handleFilterChange('riskLevel', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">All Risk Levels</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Critical">Critical</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            <FileText className="inline h-4 w-4 mr-1" />
+            Document Status
+          </label>
+          <select
+            value={filters.documentStatus}
+            onChange={(e) => handleFilterChange('documentStatus', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">All Documents</option>
+            <option value="complete">Fully Executed</option>
+            <option value="pending">Pending Signatures</option>
+            <option value="missing">Missing Documents</option>
           </select>
         </div>
       </div>
