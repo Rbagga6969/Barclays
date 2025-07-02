@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
-import AnalyticsDashboard from './components/AnalyticsDashboard';
+import EnhancedAnalyticsDashboard from './components/EnhancedAnalyticsDashboard';
 import TradeFiltersComponent from './components/TradeFilters';
 import TradeTable from './components/TradeTable';
 import WorkflowDashboard from './components/WorkflowDashboard';
 import WorkflowTracker from './components/WorkflowTracker';
-import FailureAnalysisPanel from './components/FailureAnalysisPanel';
-import DocumentManagement from './components/DocumentManagement';
-import { EquityTrade, FXTrade, TradeFilters, FailureAnalysis, DocumentStatus } from './types/trade';
+import EnhancedFailureAnalysisPanel from './components/EnhancedFailureAnalysisPanel';
+import EnhancedDocumentManagement from './components/EnhancedDocumentManagement';
+import SystemConnectivityComponent from './components/SystemConnectivity';
+import QueueManagement from './components/QueueManagement';
+import { EquityTrade, FXTrade, TradeFilters, FailureAnalysis, DocumentStatus, SystemConnectivity, QueueMetrics } from './types/trade';
 import { TradeWorkflow, WorkflowAction } from './types/workflow';
 import { parseEquityCSV, parseFXCSV } from './utils/csvParser';
 import { generateWorkflowForTrade, generateWorkflowActions } from './utils/workflowGenerator';
-import { generateFailureAnalysis, generateDocumentStatus, getRiskLevel } from './utils/failureAnalysis';
+import { generateEnhancedFailureAnalysis, generateEnhancedDocumentStatus, getRiskLevel, enhanceTradeWithBreakInfo } from './utils/enhancedFailureAnalysis';
 
 function App() {
   const [equityTrades, setEquityTrades] = useState<EquityTrade[]>([]);
@@ -21,9 +23,16 @@ function App() {
   const [workflowActions, setWorkflowActions] = useState<WorkflowAction[]>([]);
   const [failures, setFailures] = useState<FailureAnalysis[]>([]);
   const [documentStatuses, setDocumentStatuses] = useState<Record<string, DocumentStatus>>({});
+  const [systemConnectivity, setSystemConnectivity] = useState<SystemConnectivity>({
+    bookingSystem: 'Connected',
+    confirmationSystem: 'Connected',
+    swiftSystem: 'Connected',
+    middleOfficeService: 'Connected',
+    lastSync: new Date().toISOString()
+  });
   const [selectedWorkflow, setSelectedWorkflow] = useState<TradeWorkflow | null>(null);
   const [selectedTradeForDocs, setSelectedTradeForDocs] = useState<EquityTrade | FXTrade | null>(null);
-  const [activeTab, setActiveTab] = useState<'trades' | 'workflows' | 'analytics' | 'failures' | 'documents'>('trades');
+  const [activeTab, setActiveTab] = useState<'trades' | 'workflows' | 'analytics' | 'failures' | 'documents' | 'queues'>('trades');
   const [filters, setFilters] = useState<TradeFilters>({
     tradeType: 'all',
     status: '',
@@ -33,7 +42,10 @@ function App() {
     currency: '',
     trader: '',
     riskLevel: '',
-    documentStatus: ''
+    documentStatus: '',
+    breakType: '',
+    pendingWith: '',
+    queueStatus: ''
   });
 
   useEffect(() => {
@@ -45,13 +57,16 @@ function App() {
         const parsedEquityTrades = parseEquityCSV(equityText);
         
         // Enhance equity trades with additional data
-        const enhancedEquityTrades = parsedEquityTrades.map(trade => ({
-          ...trade,
-          riskLevel: getRiskLevel(trade),
-          failureReason: ['Failed', 'Disputed'].includes(trade.confirmationStatus) 
-            ? generateFailureAnalysis(trade)?.reason 
-            : undefined
-        }));
+        const enhancedEquityTrades = parsedEquityTrades.map(trade => {
+          const enhancedTrade = enhanceTradeWithBreakInfo({
+            ...trade,
+            riskLevel: getRiskLevel(trade),
+            failureReason: ['Failed', 'Disputed'].includes(trade.confirmationStatus) 
+              ? generateEnhancedFailureAnalysis(trade)?.reason 
+              : undefined
+          });
+          return enhancedTrade as EquityTrade;
+        });
         
         setEquityTrades(enhancedEquityTrades);
 
@@ -61,13 +76,16 @@ function App() {
         const parsedFxTrades = parseFXCSV(fxText);
         
         // Enhance FX trades with additional data
-        const enhancedFxTrades = parsedFxTrades.map(trade => ({
-          ...trade,
-          riskLevel: getRiskLevel(trade),
-          failureReason: ['Failed', 'Disputed'].includes(trade.confirmationStatus) 
-            ? generateFailureAnalysis(trade)?.reason 
-            : undefined
-        }));
+        const enhancedFxTrades = parsedFxTrades.map(trade => {
+          const enhancedTrade = enhanceTradeWithBreakInfo({
+            ...trade,
+            riskLevel: getRiskLevel(trade),
+            failureReason: ['Failed', 'Disputed'].includes(trade.confirmationStatus) 
+              ? generateEnhancedFailureAnalysis(trade)?.reason 
+              : undefined
+          });
+          return enhancedTrade as FXTrade;
+        });
         
         setFxTrades(enhancedFxTrades);
 
@@ -82,13 +100,13 @@ function App() {
 
         // Generate failure analyses
         const failureAnalyses = allTrades
-          .map(generateFailureAnalysis)
+          .map(generateEnhancedFailureAnalysis)
           .filter(Boolean) as FailureAnalysis[];
         setFailures(failureAnalyses);
 
         // Generate document statuses
         const docStatuses = allTrades.reduce((acc, trade) => {
-          acc[trade.tradeId] = generateDocumentStatus(trade);
+          acc[trade.tradeId] = generateEnhancedDocumentStatus(trade);
           return acc;
         }, {} as Record<string, DocumentStatus>);
         setDocumentStatuses(docStatuses);
@@ -119,6 +137,21 @@ function App() {
       if (filters.status) {
         const tradeStatus = 'confirmationStatus' in trade ? trade.confirmationStatus : trade.confirmationStatus;
         if (tradeStatus !== filters.status) return false;
+      }
+
+      // Break type filter
+      if (filters.breakType && trade.breakType !== filters.breakType) {
+        return false;
+      }
+
+      // Pending with filter
+      if (filters.pendingWith && trade.pendingWith !== filters.pendingWith) {
+        return false;
+      }
+
+      // Queue status filter
+      if (filters.queueStatus && trade.queueStatus !== filters.queueStatus) {
+        return false;
       }
 
       // Counterparty filter
@@ -168,10 +201,10 @@ function App() {
         if (!docStatus) return false;
         
         const isComplete = Object.values(docStatus).every(doc => 
-          doc.submitted && doc.clientSigned && doc.bankSigned
+          doc.submitted && doc.clientSigned && doc.bankSigned && doc.qaStatus === 'Approved'
         );
         const hasPending = Object.values(docStatus).some(doc => 
-          doc.submitted && (!doc.clientSigned || !doc.bankSigned)
+          doc.makerStatus === 'Pending' || doc.checkerStatus === 'Pending' || doc.qaStatus === 'Pending'
         );
         const hasMissing = Object.values(docStatus).some(doc => !doc.submitted);
         
@@ -183,6 +216,31 @@ function App() {
       return true;
     });
   }, [equityTrades, fxTrades, filters, documentStatuses]);
+
+  // Calculate queue metrics
+  const queueMetrics: QueueMetrics = useMemo(() => {
+    const allTrades = [...equityTrades, ...fxTrades];
+    
+    return {
+      drafting: allTrades.filter(t => t.queueStatus === 'Drafting').length,
+      matching: allTrades.filter(t => t.queueStatus === 'Matching').length,
+      pendingApprovals: allTrades.filter(t => t.queueStatus === 'Pending Approval').length,
+      ccnr: allTrades.filter(t => t.queueStatus === 'CCNR').length,
+      pendingSingleSign: Object.values(documentStatuses).reduce((count, docStatus) => {
+        return count + Object.values(docStatus).filter(doc => 
+          doc.signatureType === 'Single' && !doc.clientSigned
+        ).length;
+      }, 0),
+      pendingDoubleSign: Object.values(documentStatuses).reduce((count, docStatus) => {
+        return count + Object.values(docStatus).filter(doc => 
+          doc.signatureType === 'Double' && (!doc.clientSigned || !doc.bankSigned)
+        ).length;
+      }, 0),
+      documentsNotSent: Object.values(documentStatuses).reduce((count, docStatus) => {
+        return count + Object.values(docStatus).filter(doc => !doc.sentToClient).length;
+      }, 0)
+    };
+  }, [equityTrades, fxTrades, documentStatuses]);
 
   // Extract unique values for filter dropdowns
   const counterparties = useMemo(() => {
@@ -235,6 +293,66 @@ function App() {
     }));
   };
 
+  const handleChartClick = (dataType: string, filterData: any) => {
+    // Apply filters based on chart click
+    const newFilters = { ...filters };
+    
+    if (dataType === 'breakType' && filterData.breakType) {
+      newFilters.breakType = filterData.breakType;
+    } else if (dataType === 'queueStatus' && filterData.queueStatus) {
+      newFilters.queueStatus = filterData.queueStatus;
+    } else if (dataType === 'pendingWith' && filterData.pendingWith) {
+      newFilters.pendingWith = filterData.pendingWith;
+    }
+    
+    setFilters(newFilters);
+    setActiveTab('trades'); // Switch to trades tab to show filtered results
+  };
+
+  const handleQueueClick = (queueType: string) => {
+    const newFilters = { ...filters };
+    
+    switch (queueType) {
+      case 'drafting':
+        newFilters.queueStatus = 'Drafting';
+        break;
+      case 'matching':
+        newFilters.queueStatus = 'Matching';
+        break;
+      case 'pending-approvals':
+        newFilters.queueStatus = 'Pending Approval';
+        break;
+      case 'ccnr':
+        newFilters.queueStatus = 'CCNR';
+        break;
+      case 'single-sign':
+        newFilters.documentStatus = 'pending';
+        break;
+      case 'double-sign':
+        newFilters.documentStatus = 'pending';
+        break;
+      case 'not-sent':
+        newFilters.documentStatus = 'missing';
+        break;
+    }
+    
+    setFilters(newFilters);
+    setActiveTab('trades');
+  };
+
+  const handleSystemRefresh = () => {
+    // Simulate system connectivity refresh
+    setSystemConnectivity(prev => ({
+      ...prev,
+      lastSync: new Date().toISOString(),
+      // Randomly update some systems
+      bookingSystem: Math.random() > 0.1 ? 'Connected' : 'Error',
+      confirmationSystem: Math.random() > 0.05 ? 'Connected' : 'Disconnected',
+      swiftSystem: Math.random() > 0.15 ? 'Connected' : 'Error',
+      middleOfficeService: Math.random() > 0.08 ? 'Connected' : 'Error'
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -242,11 +360,19 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Trade Confirmation Management System
+            Enhanced Trade Confirmation Management System
           </h2>
           <p className="text-gray-600">
-            Monitor and manage trade confirmations across equity and foreign exchange transactions
+            Comprehensive trade lifecycle management with real-time connectivity and advanced analytics
           </p>
+        </div>
+
+        {/* System Connectivity Status */}
+        <div className="mb-6">
+          <SystemConnectivityComponent 
+            connectivity={systemConnectivity} 
+            onRefresh={handleSystemRefresh}
+          />
         </div>
 
         {/* Tab Navigation */}
@@ -254,9 +380,10 @@ function App() {
           <nav className="flex space-x-8">
             {[
               { key: 'trades', label: 'Trade Confirmations' },
-              { key: 'analytics', label: 'Analytics Dashboard' },
-              { key: 'failures', label: 'Failure Analysis' },
+              { key: 'analytics', label: 'Enhanced Analytics' },
+              { key: 'failures', label: 'Break Management' },
               { key: 'documents', label: 'Document Management' },
+              { key: 'queues', label: 'Queue Management' },
               { key: 'workflows', label: 'Workflow Management' }
             ].map(tab => (
               <button
@@ -293,11 +420,15 @@ function App() {
         )}
 
         {activeTab === 'analytics' && (
-          <AnalyticsDashboard equityTrades={equityTrades} fxTrades={fxTrades} />
+          <EnhancedAnalyticsDashboard 
+            equityTrades={equityTrades} 
+            fxTrades={fxTrades}
+            onChartClick={handleChartClick}
+          />
         )}
 
         {activeTab === 'failures' && (
-          <FailureAnalysisPanel
+          <EnhancedFailureAnalysisPanel
             failures={failures}
             onResolve={handleFailureResolve}
             onEscalate={handleFailureEscalate}
@@ -307,7 +438,7 @@ function App() {
         {activeTab === 'documents' && (
           <div className="space-y-6">
             {selectedTradeForDocs ? (
-              <DocumentManagement
+              <EnhancedDocumentManagement
                 trade={selectedTradeForDocs}
                 documentStatus={documentStatuses[selectedTradeForDocs.tradeId]}
                 onDocumentUpdate={(docType, updates) => 
@@ -334,6 +465,13 @@ function App() {
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === 'queues' && (
+          <QueueManagement 
+            metrics={queueMetrics}
+            onQueueClick={handleQueueClick}
+          />
         )}
 
         {activeTab === 'workflows' && (

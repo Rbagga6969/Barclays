@@ -19,6 +19,11 @@ export interface EquityTrade {
   failureReason?: string;
   documentStatus?: DocumentStatus;
   riskLevel?: 'Low' | 'Medium' | 'High' | 'Critical';
+  breakType?: 'Economic' | 'Non-Economic';
+  pendingWith?: 'Legal' | 'Middle Office' | 'Client' | 'Front Office' | 'Trading Sales';
+  nextActionOwner?: string;
+  breakClassification?: string;
+  queueStatus?: 'Drafting' | 'Matching' | 'Pending Approval' | 'CCNR';
 }
 
 export interface FXTrade {
@@ -45,6 +50,11 @@ export interface FXTrade {
   failureReason?: string;
   documentStatus?: DocumentStatus;
   riskLevel?: 'Low' | 'Medium' | 'High' | 'Critical';
+  breakType?: 'Economic' | 'Non-Economic';
+  pendingWith?: 'Legal' | 'Middle Office' | 'Client' | 'Front Office' | 'Trading Sales';
+  nextActionOwner?: string;
+  breakClassification?: string;
+  queueStatus?: 'Drafting' | 'Matching' | 'Pending Approval' | 'CCNR';
 }
 
 export interface DocumentStatus {
@@ -52,6 +62,8 @@ export interface DocumentStatus {
   clientAgreement: DocumentInfo;
   riskDisclosure: DocumentInfo;
   complianceChecklist: DocumentInfo;
+  frontOfficeSalesApproval: DocumentInfo;
+  tradingSalesApproval: DocumentInfo;
 }
 
 export interface DocumentInfo {
@@ -61,6 +73,11 @@ export interface DocumentInfo {
   timestamp?: string;
   documentUrl?: string;
   version: number;
+  makerStatus?: 'Pending' | 'Created' | 'Approved';
+  checkerStatus?: 'Pending' | 'Reviewed' | 'Approved';
+  qaStatus?: 'Pending' | 'In Review' | 'Approved' | 'Rejected';
+  sentToClient?: boolean;
+  signatureType?: 'Single' | 'Double';
 }
 
 export type Trade = EquityTrade | FXTrade;
@@ -75,17 +92,46 @@ export interface TradeFilters {
   trader: string;
   riskLevel: string;
   documentStatus: string;
+  breakType: string;
+  pendingWith: string;
+  queueStatus: string;
 }
 
 export interface FailureAnalysis {
   tradeId: string;
-  failureType: 'Settlement' | 'Documentation' | 'Compliance' | 'Technical' | 'Client' | 'Counterparty';
+  failureType: 'Economic Break' | 'Non-Economic Break' | 'Documentation' | 'Compliance' | 'Technical';
+  breakType: 'Economic' | 'Non-Economic';
   reason: string;
   impact: 'Low' | 'Medium' | 'High' | 'Critical';
   suggestedSolution: string;
   estimatedResolutionTime: string;
   assignedTo: string;
+  pendingWith: 'Legal' | 'Middle Office' | 'Client' | 'Front Office' | 'Trading Sales';
+  nextActionOwner: string;
+  breakClassification: string;
+  actionFields: {
+    economicBreak?: string;
+    nonEconomicBreak?: string;
+  };
   status: 'Open' | 'In Progress' | 'Resolved' | 'Escalated';
   createdAt: string;
   resolvedAt?: string;
+}
+
+export interface SystemConnectivity {
+  bookingSystem: 'Connected' | 'Disconnected' | 'Error';
+  confirmationSystem: 'Connected' | 'Disconnected' | 'Error';
+  swiftSystem: 'Connected' | 'Disconnected' | 'Error';
+  middleOfficeService: 'Connected' | 'Disconnected' | 'Error';
+  lastSync: string;
+}
+
+export interface QueueMetrics {
+  drafting: number;
+  matching: number;
+  pendingApprovals: number;
+  ccnr: number;
+  pendingSingleSign: number;
+  pendingDoubleSign: number;
+  documentsNotSent: number;
 }
