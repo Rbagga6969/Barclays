@@ -14,7 +14,8 @@ import { EquityTrade, FXTrade, TradeFilters, FailureAnalysis, DocumentStatus, Sy
 import { TradeWorkflow, WorkflowAction } from './types/workflow';
 import { parseEquityCSV, parseFXCSV } from './utils/csvParser';
 import { generateWorkflowForTrade, generateWorkflowActions } from './utils/workflowGenerator';
-import { generateEnhancedFailureAnalysis, generateEnhancedDocumentStatus, getRiskLevel, enhanceTradeWithBreakInfo } from './utils/enhancedFailureAnalysis';
+import { getRiskLevel } from './utils/failureAnalysis';
+import { generateEnhancedFailureAnalysis, generateEnhancedDocumentStatus, enhanceTradeWithBreakInfo } from './utils/enhancedFailureAnalysis';
 
 function App() {
   const [equityTrades, setEquityTrades] = useState<EquityTrade[]>([]);
