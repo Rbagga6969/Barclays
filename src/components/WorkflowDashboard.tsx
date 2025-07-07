@@ -7,7 +7,9 @@ import {
   Users, 
   TrendingUp,
   Filter,
-  Search
+  Search,
+  FileText,
+  UserCheck
 } from 'lucide-react';
 import { TradeWorkflow, WorkflowAction } from '../types/workflow';
 
@@ -21,21 +23,36 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Categorize workflows by stage
+  const workflowsByStage = useMemo(() => {
+    const stages = {
+      drafting: workflows.filter(w => 
+        w.steps.some(s => s.id.includes('drafting') && s.status === 'in-progress')
+      ),
+      matching: workflows.filter(w => 
+        w.steps.some(s => s.id.includes('affirmation') && s.status === 'in-progress')
+      ),
+      pendingApprovals: workflows.filter(w => 
+        w.steps.some(s => s.status === 'requires-action')
+      ),
+      ccnr: workflows.filter(w => 
+        w.steps.every(s => s.status === 'completed')
+      )
+    };
+
+    return stages;
+  }, [workflows]);
+
   const stats = useMemo(() => {
     const total = workflows.length;
-    const inProgress = workflows.filter(w => 
-      w.steps.some(s => s.status === 'in-progress')
-    ).length;
-    const requiresAction = workflows.filter(w => 
-      w.steps.some(s => s.status === 'requires-action')
-    ).length;
-    const completed = workflows.filter(w => 
-      w.steps.every(s => s.status === 'completed')
-    ).length;
+    const drafting = workflowsByStage.drafting.length;
+    const matching = workflowsByStage.matching.length;
+    const pendingApprovals = workflowsByStage.pendingApprovals.length;
+    const ccnr = workflowsByStage.ccnr.length;
     const overdue = actions.filter(a => a.status === 'overdue').length;
 
-    return { total, inProgress, requiresAction, completed, overdue };
-  }, [workflows, actions]);
+    return { total, drafting, matching, pendingApprovals, ccnr, overdue };
+  }, [workflows, actions, workflowsByStage]);
 
   const filteredWorkflows = useMemo(() => {
     return workflows.filter(workflow => {
@@ -65,6 +82,75 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
     ).slice(0, 5);
   }, [actions]);
 
+  const renderStageSection = (stageName: string, stageWorkflows: TradeWorkflow[], icon: React.ElementType) => {
+    const Icon = icon;
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <Icon className="h-5 w-5 text-blue-600 mr-2" />
+            {stageName} ({stageWorkflows.length})
+          </h3>
+        </div>
+        
+        <div className="space-y-3">
+          {stageWorkflows.slice(0, 5).map((workflow) => {
+            const currentStep = workflow.steps.find(s => s.id === workflow.currentStep);
+            const completedSteps = workflow.steps.filter(s => s.status === 'completed').length;
+            const totalSteps = workflow.steps.length;
+            const progress = (completedSteps / totalSteps) * 100;
+
+            return (
+              <div key={workflow.tradeId} className="border rounded-lg p-3 hover:bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium text-gray-900">{workflow.tradeId}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        workflow.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                        workflow.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                        workflow.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {workflow.priority}
+                      </span>
+                    </div>
+                    
+                    <p className="text-sm text-gray-600 mt-1">
+                      {currentStep?.name || 'Unknown Step'}
+                    </p>
+                    
+                    <div className="mt-2">
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div
+                          className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                          style={{ width: `${progress}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">{completedSteps}/{totalSteps} steps</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          
+          {stageWorkflows.length === 0 && (
+            <p className="text-sm text-gray-500 text-center py-4">
+              No trades in {stageName.toLowerCase()} stage
+            </p>
+          )}
+          
+          {stageWorkflows.length > 5 && (
+            <p className="text-sm text-blue-600 text-center">
+              +{stageWorkflows.length - 5} more trades
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Stats Overview */}
@@ -81,10 +167,20 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
 
         <div className="bg-white rounded-lg shadow-md p-4">
           <div className="flex items-center">
-            <Clock className="h-8 w-8 text-yellow-600" />
+            <FileText className="h-8 w-8 text-purple-600" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">In Progress</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.inProgress}</p>
+              <p className="text-sm font-medium text-gray-600">Drafting</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.drafting}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="flex items-center">
+            <Users className="h-8 w-8 text-yellow-600" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Matching</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.matching}</p>
             </div>
           </div>
         </div>
@@ -93,8 +189,8 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
           <div className="flex items-center">
             <AlertTriangle className="h-8 w-8 text-orange-600" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">Requires Action</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.requiresAction}</p>
+              <p className="text-sm font-medium text-gray-600">Pending Approvals</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.pendingApprovals}</p>
             </div>
           </div>
         </div>
@@ -103,217 +199,166 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
           <div className="flex items-center">
             <CheckCircle className="h-8 w-8 text-green-600" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">Completed</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="flex items-center">
-            <AlertTriangle className="h-8 w-8 text-red-600" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">Overdue</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.overdue}</p>
+              <p className="text-sm font-medium text-gray-600">CCNR</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.ccnr}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Workflow List */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow-md">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Active Workflows</h3>
-                <div className="flex items-center space-x-4">
-                  {/* Search */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search trade ID..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
+      {/* Workflow Stages */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {renderStageSection('Drafting', workflowsByStage.drafting, FileText)}
+        {renderStageSection('Matching', workflowsByStage.matching, Users)}
+        {renderStageSection('Pending Approvals', workflowsByStage.pendingApprovals, AlertTriangle)}
+        {renderStageSection('CCNR (Complete)', workflowsByStage.ccnr, CheckCircle)}
+      </div>
 
-                  {/* Filters */}
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="requires-action">Requires Action</option>
-                    <option value="completed">Completed</option>
-                  </select>
-
-                  <select
-                    value={filterPriority}
-                    onChange={(e) => setFilterPriority(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Priority</option>
-                    <option value="urgent">Urgent</option>
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                  </select>
-                </div>
+      {/* Detailed Workflow List */}
+      <div className="bg-white rounded-lg shadow-md">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">All Workflows</h3>
+            <div className="flex items-center space-x-4">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search trade ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
-            </div>
 
-            <div className="divide-y divide-gray-200">
-              {filteredWorkflows.map((workflow) => {
-                const currentStep = workflow.steps.find(s => s.id === workflow.currentStep);
-                const completedSteps = workflow.steps.filter(s => s.status === 'completed').length;
-                const totalSteps = workflow.steps.length;
-                const progress = (completedSteps / totalSteps) * 100;
+              {/* Filters */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="in-progress">In Progress</option>
+                <option value="requires-action">Requires Action</option>
+                <option value="completed">Completed</option>
+              </select>
 
-                return (
-                  <div key={workflow.tradeId} className="p-6 hover:bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3">
-                          <h4 className="text-sm font-medium text-gray-900">
-                            {workflow.tradeId}
-                          </h4>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            workflow.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                            workflow.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                            workflow.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {workflow.priority}
-                          </span>
-                        </div>
-                        
-                        <p className="text-sm text-gray-600 mt-1">
-                          Current: {currentStep?.name || 'Unknown'}
-                        </p>
-                        
-                        <div className="mt-2">
-                          <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                            <span>Progress</span>
-                            <span>{completedSteps}/{totalSteps} steps</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${progress}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500">
-                          Updated: {new Date(workflow.updatedAt).toLocaleDateString()}
-                        </p>
-                        {workflow.steps.some(s => s.status === 'requires-action') && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 mt-1">
-                            Action Required
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              <select
+                value={filterPriority}
+                onChange={(e) => setFilterPriority(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Priority</option>
+                <option value="urgent">Urgent</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
             </div>
           </div>
         </div>
 
-        {/* Action Items */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow-md">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <AlertTriangle className="h-5 w-5 text-orange-600 mr-2" />
-                Urgent Actions
-              </h3>
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                {urgentActions.map((action) => (
-                  <div key={action.id} className="border-l-4 border-orange-400 pl-4">
-                    <div className="flex items-center justify-between">
+        <div className="divide-y divide-gray-200">
+          {filteredWorkflows.map((workflow) => {
+            const currentStep = workflow.steps.find(s => s.id === workflow.currentStep);
+            const completedSteps = workflow.steps.filter(s => s.status === 'completed').length;
+            const totalSteps = workflow.steps.length;
+            const progress = (completedSteps / totalSteps) * 100;
+
+            return (
+              <div key={workflow.tradeId} className="p-6 hover:bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3">
                       <h4 className="text-sm font-medium text-gray-900">
-                        {action.description}
+                        {workflow.tradeId}
                       </h4>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        action.status === 'overdue' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
+                        workflow.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                        workflow.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                        workflow.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
                       }`}>
-                        {action.status}
+                        {workflow.priority}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Type: {action.type}
+                    
+                    <p className="text-sm text-gray-600 mt-1">
+                      Current: {currentStep?.name || 'Unknown'}
                     </p>
-                    {action.dueDate && (
-                      <p className="text-xs text-gray-500">
-                        Due: {new Date(action.dueDate).toLocaleDateString()}
-                      </p>
+                    
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                        <span>Progress</span>
+                        <span>{completedSteps}/{totalSteps} steps</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${progress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">
+                      Updated: {new Date(workflow.updatedAt).toLocaleDateString()}
+                    </p>
+                    {workflow.steps.some(s => s.status === 'requires-action') && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 mt-1">
+                        Action Required
+                      </span>
                     )}
                   </div>
-                ))}
-                
-                {urgentActions.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    No urgent actions at this time
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Action Items */}
+      <div className="bg-white rounded-lg shadow-md">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <AlertTriangle className="h-5 w-5 text-orange-600 mr-2" />
+            Urgent Actions
+          </h3>
+        </div>
+        <div className="p-6">
+          <div className="space-y-4">
+            {urgentActions.map((action) => (
+              <div key={action.id} className="border-l-4 border-orange-400 pl-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium text-gray-900">
+                    {action.description}
+                  </h4>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    action.status === 'overdue' ? 'bg-red-100 text-red-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {action.status}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Type: {action.type}
+                </p>
+                {action.dueDate && (
+                  <p className="text-xs text-gray-500">
+                    Due: {new Date(action.dueDate).toLocaleDateString()}
                   </p>
                 )}
               </div>
-            </div>
-          </div>
-
-          {/* Process Flow Summary */}
-          <div className="bg-white rounded-lg shadow-md">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Process Flow</h3>
-            </div>
-            <div className="p-6">
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span>1. Trade Booking → Confirmation System</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span>2. Amendment Check → FO/TCU/IBMO</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span>3. Affirmation Trigger (T+1)</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span>4. Client Affirmation</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span>5. SWIFT/Paper Routing</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span>6. Drafting Process</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span>7. Confirmation Dispatch</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>8. Final Execution</span>
-                </div>
-              </div>
-            </div>
+            ))}
+            
+            {urgentActions.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">
+                No urgent actions at this time
+              </p>
+            )}
           </div>
         </div>
       </div>

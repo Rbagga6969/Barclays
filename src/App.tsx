@@ -8,9 +8,8 @@ import WorkflowDashboard from './components/WorkflowDashboard';
 import WorkflowTracker from './components/WorkflowTracker';
 import EnhancedFailureAnalysisPanel from './components/EnhancedFailureAnalysisPanel';
 import EnhancedDocumentManagement from './components/EnhancedDocumentManagement';
-import SystemConnectivityComponent from './components/SystemConnectivity';
-import QueueManagement from './components/QueueManagement';
-import { EquityTrade, FXTrade, TradeFilters, FailureAnalysis, DocumentStatus, SystemConnectivity, QueueMetrics } from './types/trade';
+import SettlementsPage from './components/SettlementsPage';
+import { EquityTrade, FXTrade, TradeFilters, FailureAnalysis, DocumentStatus } from './types/trade';
 import { TradeWorkflow, WorkflowAction } from './types/workflow';
 import { parseEquityCSV, parseFXCSV } from './utils/csvParser';
 import { generateWorkflowForTrade, generateWorkflowActions } from './utils/workflowGenerator';
@@ -24,16 +23,9 @@ function App() {
   const [workflowActions, setWorkflowActions] = useState<WorkflowAction[]>([]);
   const [failures, setFailures] = useState<FailureAnalysis[]>([]);
   const [documentStatuses, setDocumentStatuses] = useState<Record<string, DocumentStatus>>({});
-  const [systemConnectivity, setSystemConnectivity] = useState<SystemConnectivity>({
-    bookingSystem: 'Connected',
-    confirmationSystem: 'Connected',
-    swiftSystem: 'Connected',
-    middleOfficeService: 'Connected',
-    lastSync: new Date().toISOString()
-  });
   const [selectedWorkflow, setSelectedWorkflow] = useState<TradeWorkflow | null>(null);
   const [selectedTradeForDocs, setSelectedTradeForDocs] = useState<EquityTrade | FXTrade | null>(null);
-  const [activeTab, setActiveTab] = useState<'trades' | 'workflows' | 'analytics' | 'failures' | 'documents' | 'queues'>('trades');
+  const [activeTab, setActiveTab] = useState<'trades' | 'workflows' | 'analytics' | 'failures' | 'documents' | 'settlements'>('trades');
   const [filters, setFilters] = useState<TradeFilters>({
     tradeType: 'all',
     status: '',
@@ -218,31 +210,6 @@ function App() {
     });
   }, [equityTrades, fxTrades, filters, documentStatuses]);
 
-  // Calculate queue metrics
-  const queueMetrics: QueueMetrics = useMemo(() => {
-    const allTrades = [...equityTrades, ...fxTrades];
-    
-    return {
-      drafting: allTrades.filter(t => t.queueStatus === 'Drafting').length,
-      matching: allTrades.filter(t => t.queueStatus === 'Matching').length,
-      pendingApprovals: allTrades.filter(t => t.queueStatus === 'Pending Approval').length,
-      ccnr: allTrades.filter(t => t.queueStatus === 'CCNR').length,
-      pendingSingleSign: Object.values(documentStatuses).reduce((count, docStatus) => {
-        return count + Object.values(docStatus).filter(doc => 
-          doc.signatureType === 'Single' && !doc.clientSigned
-        ).length;
-      }, 0),
-      pendingDoubleSign: Object.values(documentStatuses).reduce((count, docStatus) => {
-        return count + Object.values(docStatus).filter(doc => 
-          doc.signatureType === 'Double' && (!doc.clientSigned || !doc.bankSigned)
-        ).length;
-      }, 0),
-      documentsNotSent: Object.values(documentStatuses).reduce((count, docStatus) => {
-        return count + Object.values(docStatus).filter(doc => !doc.sentToClient).length;
-      }, 0)
-    };
-  }, [equityTrades, fxTrades, documentStatuses]);
-
   // Extract unique values for filter dropdowns
   const counterparties = useMemo(() => {
     const allCounterparties = [...equityTrades, ...fxTrades].map(trade => trade.counterparty);
@@ -269,14 +236,6 @@ function App() {
     setFailures(prev => prev.map(failure => 
       failure.tradeId === tradeId 
         ? { ...failure, status: 'Resolved', resolvedAt: new Date().toISOString() }
-        : failure
-    ));
-  };
-
-  const handleFailureEscalate = (tradeId: string) => {
-    setFailures(prev => prev.map(failure => 
-      failure.tradeId === tradeId 
-        ? { ...failure, status: 'Escalated' }
         : failure
     ));
   };
@@ -310,48 +269,19 @@ function App() {
     setActiveTab('trades'); // Switch to trades tab to show filtered results
   };
 
-  const handleQueueClick = (queueType: string) => {
-    const newFilters = { ...filters };
+  const handleSendToSettlements = (tradeId: string) => {
+    // Update trade status to indicate it's been sent to settlements
+    setEquityTrades(prev => prev.map(trade => 
+      trade.tradeId === tradeId 
+        ? { ...trade, sentToSettlements: true, settlementsSentAt: new Date().toISOString() }
+        : trade
+    ));
     
-    switch (queueType) {
-      case 'drafting':
-        newFilters.queueStatus = 'Drafting';
-        break;
-      case 'matching':
-        newFilters.queueStatus = 'Matching';
-        break;
-      case 'pending-approvals':
-        newFilters.queueStatus = 'Pending Approval';
-        break;
-      case 'ccnr':
-        newFilters.queueStatus = 'CCNR';
-        break;
-      case 'single-sign':
-        newFilters.documentStatus = 'pending';
-        break;
-      case 'double-sign':
-        newFilters.documentStatus = 'pending';
-        break;
-      case 'not-sent':
-        newFilters.documentStatus = 'missing';
-        break;
-    }
-    
-    setFilters(newFilters);
-    setActiveTab('trades');
-  };
-
-  const handleSystemRefresh = () => {
-    // Simulate system connectivity refresh
-    setSystemConnectivity(prev => ({
-      ...prev,
-      lastSync: new Date().toISOString(),
-      // Randomly update some systems
-      bookingSystem: Math.random() > 0.1 ? 'Connected' : 'Error',
-      confirmationSystem: Math.random() > 0.05 ? 'Connected' : 'Disconnected',
-      swiftSystem: Math.random() > 0.15 ? 'Connected' : 'Error',
-      middleOfficeService: Math.random() > 0.08 ? 'Connected' : 'Error'
-    }));
+    setFxTrades(prev => prev.map(trade => 
+      trade.tradeId === tradeId 
+        ? { ...trade, sentToSettlements: true, settlementsSentAt: new Date().toISOString() }
+        : trade
+    ));
   };
 
   return (
@@ -364,16 +294,8 @@ function App() {
             Enhanced Trade Confirmation Management System
           </h2>
           <p className="text-gray-600">
-            Comprehensive trade lifecycle management with real-time connectivity and advanced analytics
+            Comprehensive trade lifecycle management with real-time analytics and workflow automation
           </p>
-        </div>
-
-        {/* System Connectivity Status */}
-        <div className="mb-6">
-          <SystemConnectivityComponent 
-            connectivity={systemConnectivity} 
-            onRefresh={handleSystemRefresh}
-          />
         </div>
 
         {/* Tab Navigation */}
@@ -384,8 +306,8 @@ function App() {
               { key: 'analytics', label: 'Enhanced Analytics' },
               { key: 'failures', label: 'Break Management' },
               { key: 'documents', label: 'Document Management' },
-              { key: 'queues', label: 'Queue Management' },
-              { key: 'workflows', label: 'Workflow Management' }
+              { key: 'workflows', label: 'Workflow Management' },
+              { key: 'settlements', label: 'Settlements' }
             ].map(tab => (
               <button
                 key={tab.key}
@@ -416,6 +338,7 @@ function App() {
               trades={filteredTrades} 
               tradeType={filters.tradeType as 'equity' | 'fx' | 'all'}
               onSelectTradeForDocs={setSelectedTradeForDocs}
+              onSendToSettlements={handleSendToSettlements}
             />
           </>
         )}
@@ -424,6 +347,7 @@ function App() {
           <EnhancedAnalyticsDashboard 
             equityTrades={equityTrades} 
             fxTrades={fxTrades}
+            documentStatuses={documentStatuses}
             onChartClick={handleChartClick}
           />
         )}
@@ -432,7 +356,6 @@ function App() {
           <EnhancedFailureAnalysisPanel
             failures={failures}
             onResolve={handleFailureResolve}
-            onEscalate={handleFailureEscalate}
           />
         )}
 
@@ -445,6 +368,7 @@ function App() {
                 onDocumentUpdate={(docType, updates) => 
                   handleDocumentUpdate(selectedTradeForDocs.tradeId, docType, updates)
                 }
+                onSendToSettlements={() => handleSendToSettlements(selectedTradeForDocs.tradeId)}
               />
             ) : (
               <div className="bg-white rounded-lg shadow-md p-12 text-center">
@@ -468,13 +392,6 @@ function App() {
           </div>
         )}
 
-        {activeTab === 'queues' && (
-          <QueueManagement 
-            metrics={queueMetrics}
-            onQueueClick={handleQueueClick}
-          />
-        )}
-
         {activeTab === 'workflows' && (
           <div className="space-y-6">
             <WorkflowDashboard 
@@ -489,6 +406,13 @@ function App() {
               />
             )}
           </div>
+        )}
+
+        {activeTab === 'settlements' && (
+          <SettlementsPage 
+            equityTrades={equityTrades}
+            fxTrades={fxTrades}
+          />
         )}
       </main>
     </div>

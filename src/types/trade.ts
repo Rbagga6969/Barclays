@@ -24,6 +24,8 @@ export interface EquityTrade {
   nextActionOwner?: string;
   breakClassification?: string;
   queueStatus?: 'Drafting' | 'Matching' | 'Pending Approval' | 'CCNR';
+  sentToSettlements?: boolean;
+  settlementsSentAt?: string;
 }
 
 export interface FXTrade {
@@ -55,6 +57,8 @@ export interface FXTrade {
   nextActionOwner?: string;
   breakClassification?: string;
   queueStatus?: 'Drafting' | 'Matching' | 'Pending Approval' | 'CCNR';
+  sentToSettlements?: boolean;
+  settlementsSentAt?: string;
 }
 
 export interface DocumentStatus {
@@ -116,14 +120,6 @@ export interface FailureAnalysis {
   status: 'Open' | 'In Progress' | 'Resolved' | 'Escalated';
   createdAt: string;
   resolvedAt?: string;
-}
-
-export interface SystemConnectivity {
-  bookingSystem: 'Connected' | 'Disconnected' | 'Error';
-  confirmationSystem: 'Connected' | 'Disconnected' | 'Error';
-  swiftSystem: 'Connected' | 'Disconnected' | 'Error';
-  middleOfficeService: 'Connected' | 'Disconnected' | 'Error';
-  lastSync: string;
 }
 
 export interface QueueMetrics {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, FileText, Download, AlertTriangle, CheckCircle, Clock, XCircle, Shield, User } from 'lucide-react';
+import { Eye, FileText, Download, AlertTriangle, CheckCircle, Clock, XCircle, Shield, User, Send } from 'lucide-react';
 import { EquityTrade, FXTrade } from '../types/trade';
 import TradeConfirmationModal from './TradeConfirmationModal';
 
@@ -7,9 +7,15 @@ interface TradeTableProps {
   trades: (EquityTrade | FXTrade)[];
   tradeType: 'equity' | 'fx' | 'all';
   onSelectTradeForDocs?: (trade: EquityTrade | FXTrade) => void;
+  onSendToSettlements?: (tradeId: string) => void;
 }
 
-const TradeTable: React.FC<TradeTableProps> = ({ trades, tradeType, onSelectTradeForDocs }) => {
+const TradeTable: React.FC<TradeTableProps> = ({ 
+  trades, 
+  tradeType, 
+  onSelectTradeForDocs,
+  onSendToSettlements 
+}) => {
   const [selectedTrade, setSelectedTrade] = useState<EquityTrade | FXTrade | null>(null);
   const [showModal, setShowModal] = useState(false);
 
@@ -79,6 +85,12 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades, tradeType, onSelectTrad
     setShowModal(true);
   };
 
+  const handleSendToSettlements = (tradeId: string) => {
+    if (onSendToSettlements) {
+      onSendToSettlements(tradeId);
+    }
+  };
+
   const isEquityTrade = (trade: EquityTrade | FXTrade): trade is EquityTrade => {
     return 'orderId' in trade;
   };
@@ -89,6 +101,11 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades, tradeType, onSelectTrad
       currency: currency || 'USD',
       minimumFractionDigits: 2
     }).format(amount);
+  };
+
+  const canSendToSettlements = (trade: EquityTrade | FXTrade) => {
+    const status = isEquityTrade(trade) ? trade.confirmationStatus : trade.confirmationStatus;
+    return ['Confirmed', 'Settled'].includes(status) && !('sentToSettlements' in trade && trade.sentToSettlements);
   };
 
   return (
@@ -143,6 +160,12 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades, tradeType, onSelectTrad
                       <div className="text-xs text-red-600 mt-1" title={trade.failureReason}>
                         <AlertTriangle className="h-3 w-3 inline mr-1" />
                         Issue Detected
+                      </div>
+                    )}
+                    {'sentToSettlements' in trade && trade.sentToSettlements && (
+                      <div className="text-xs text-green-600 mt-1">
+                        <Send className="h-3 w-3 inline mr-1" />
+                        Sent to Settlements
                       </div>
                     )}
                   </td>
@@ -218,6 +241,15 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades, tradeType, onSelectTrad
                         >
                           <FileText className="h-3 w-3 mr-1" />
                           Docs
+                        </button>
+                      )}
+                      {canSendToSettlements(trade) && (
+                        <button
+                          onClick={() => handleSendToSettlements(trade.tradeId)}
+                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+                        >
+                          <Send className="h-3 w-3 mr-1" />
+                          Send
                         </button>
                       )}
                     </div>

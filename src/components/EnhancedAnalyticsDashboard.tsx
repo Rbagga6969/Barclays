@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
-import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, DollarSign, Activity, Filter } from 'lucide-react';
-import { EquityTrade, FXTrade } from '../types/trade';
+import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, DollarSign, Activity, Filter, FileText, Users } from 'lucide-react';
+import { EquityTrade, FXTrade, DocumentStatus } from '../types/trade';
 
 interface EnhancedAnalyticsDashboardProps {
   equityTrades: EquityTrade[];
   fxTrades: FXTrade[];
+  documentStatuses: Record<string, DocumentStatus>;
   onChartClick: (dataType: string, filters: any) => void;
 }
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#F97316', '#84CC16'];
 
 const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({ 
   equityTrades, 
   fxTrades, 
+  documentStatuses,
   onChartClick 
 }) => {
   const [selectedChart, setSelectedChart] = useState<string | null>(null);
@@ -74,15 +76,23 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
     let doubleSignPending = 0;
     let notSentToClient = 0;
     let makerCheckerPending = 0;
+    let frontOfficePending = 0;
+    let tradingSalesPending = 0;
 
-    allTrades.forEach(trade => {
-      if (trade.documentStatus) {
-        Object.values(trade.documentStatus).forEach(doc => {
-          if (doc.signatureType === 'Single' && !doc.clientSigned) singleSignPending++;
-          if (doc.signatureType === 'Double' && (!doc.clientSigned || !doc.bankSigned)) doubleSignPending++;
-          if (!doc.sentToClient) notSentToClient++;
-          if (doc.makerStatus === 'Pending' || doc.checkerStatus === 'Pending') makerCheckerPending++;
-        });
+    Object.values(documentStatuses).forEach(docStatus => {
+      Object.values(docStatus).forEach(doc => {
+        if (doc.signatureType === 'Single' && !doc.clientSigned) singleSignPending++;
+        if (doc.signatureType === 'Double' && (!doc.clientSigned || !doc.bankSigned)) doubleSignPending++;
+        if (!doc.sentToClient) notSentToClient++;
+        if (doc.makerStatus === 'Pending' || doc.checkerStatus === 'Pending' || doc.qaStatus === 'Pending') makerCheckerPending++;
+      });
+      
+      // Check for front office and trading sales approvals
+      if (docStatus.frontOfficeSalesApproval && docStatus.frontOfficeSalesApproval.makerStatus === 'Pending') {
+        frontOfficePending++;
+      }
+      if (docStatus.tradingSalesApproval && docStatus.tradingSalesApproval.makerStatus === 'Pending') {
+        tradingSalesPending++;
       }
     });
 
@@ -90,9 +100,23 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
       singleSignPending,
       doubleSignPending,
       notSentToClient,
-      makerCheckerPending
+      makerCheckerPending,
+      frontOfficePending,
+      tradingSalesPending
     };
-  }, [allTrades]);
+  }, [documentStatuses]);
+
+  // Document Signature Status Data for Chart
+  const documentSignatureData = React.useMemo(() => {
+    return [
+      { name: 'Single Sign Pending', value: documentMetrics.singleSignPending },
+      { name: 'Double Sign Pending', value: documentMetrics.doubleSignPending },
+      { name: 'Not Sent to Client', value: documentMetrics.notSentToClient },
+      { name: 'QA Pending', value: documentMetrics.makerCheckerPending },
+      { name: 'Front Office Pending', value: documentMetrics.frontOfficePending },
+      { name: 'Trading Sales Pending', value: documentMetrics.tradingSalesPending }
+    ].filter(item => item.value > 0);
+  }, [documentMetrics]);
 
   const handleChartClick = (dataType: string, data?: any) => {
     setSelectedChart(dataType);
@@ -104,6 +128,20 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
       return (
         <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg">
           <p className="font-medium">{`${label}: ${payload[0].value}`}</p>
+          <p className="text-sm text-gray-600">Click to filter trades</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const CustomPieTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg">
+          <p className="font-medium">{`${data.name}: ${data.value}`}</p>
+          <p className="text-sm text-gray-600">{`${data.percentage}% of total`}</p>
           <p className="text-sm text-gray-600">Click to filter trades</p>
         </div>
       );
@@ -158,7 +196,7 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
               <p className="text-sm font-medium text-gray-600">Documents Not Sent</p>
               <p className="text-2xl font-bold text-purple-600">{documentMetrics.notSentToClient}</p>
             </div>
-            <TrendingUp className="h-8 w-8 text-purple-600" />
+            <FileText className="h-8 w-8 text-purple-600" />
           </div>
           <p className="text-xs text-gray-500 mt-2">Pending client delivery</p>
         </div>
@@ -180,7 +218,7 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percentage }) => `${name} (${percentage}%)`}
+                  label={({ name, value, percentage }) => `${name}: ${value} (${percentage}%)`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -191,7 +229,7 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomPieTooltip />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -220,6 +258,11 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
               </BarChart>
             </ResponsiveContainer>
           </div>
+          <div className="mt-2 text-center">
+            <p className="text-sm text-gray-600">
+              Total: {queueStatusData.reduce((sum, item) => sum + item.value, 0)} trades
+            </p>
+          </div>
         </div>
 
         {/* Pending With Analysis */}
@@ -245,42 +288,109 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
               </BarChart>
             </ResponsiveContainer>
           </div>
+          <div className="mt-2 text-center">
+            <p className="text-sm text-gray-600">
+              Total: {pendingWithData.reduce((sum, item) => sum + item.value, 0)} pending issues
+            </p>
+          </div>
         </div>
 
-        {/* Document Signature Status */}
+        {/* Document Signature Status Chart */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <CheckCircle className="h-5 w-5 text-purple-600 mr-2" />
-            Document Signature Status
+            <Users className="h-5 w-5 text-purple-600 mr-2" />
+            Document & Approval Status
           </h3>
-          <div className="space-y-4">
-            <div 
-              className="flex items-center justify-between p-3 bg-purple-50 rounded-lg cursor-pointer hover:bg-purple-100"
-              onClick={() => handleChartClick('signatures', { signatureType: 'Single' })}
-            >
-              <span className="font-medium text-gray-900">Pending Single Sign</span>
-              <span className="text-lg font-bold text-purple-600">{documentMetrics.singleSignPending}</span>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={documentSignatureData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, value }) => `${name}: ${value}`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                  onClick={(data) => handleChartClick('documentStatus', { type: data.name })}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {documentSignatureData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomPieTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-2 text-center">
+            <p className="text-sm text-gray-600">
+              Total pending items: {documentSignatureData.reduce((sum, item) => sum + item.value, 0)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Detailed Document Status Breakdown */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <FileText className="h-5 w-5 text-indigo-600 mr-2" />
+          Document Processing Status Breakdown
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div 
+            className="p-4 bg-purple-50 rounded-lg cursor-pointer hover:bg-purple-100 transition-colors"
+            onClick={() => handleChartClick('signatures', { signatureType: 'Single' })}
+          >
+            <div className="text-center">
+              <p className="text-2xl font-bold text-purple-600">{documentMetrics.singleSignPending}</p>
+              <p className="text-sm text-purple-800">Single Sign Pending</p>
             </div>
-            <div 
-              className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg cursor-pointer hover:bg-indigo-100"
-              onClick={() => handleChartClick('signatures', { signatureType: 'Double' })}
-            >
-              <span className="font-medium text-gray-900">Pending Double Sign</span>
-              <span className="text-lg font-bold text-indigo-600">{documentMetrics.doubleSignPending}</span>
+          </div>
+          <div 
+            className="p-4 bg-indigo-50 rounded-lg cursor-pointer hover:bg-indigo-100 transition-colors"
+            onClick={() => handleChartClick('signatures', { signatureType: 'Double' })}
+          >
+            <div className="text-center">
+              <p className="text-2xl font-bold text-indigo-600">{documentMetrics.doubleSignPending}</p>
+              <p className="text-sm text-indigo-800">Double Sign Pending</p>
             </div>
-            <div 
-              className="flex items-center justify-between p-3 bg-red-50 rounded-lg cursor-pointer hover:bg-red-100"
-              onClick={() => handleChartClick('documents', { sentToClient: false })}
-            >
-              <span className="font-medium text-gray-900">Not Sent to Client</span>
-              <span className="text-lg font-bold text-red-600">{documentMetrics.notSentToClient}</span>
+          </div>
+          <div 
+            className="p-4 bg-red-50 rounded-lg cursor-pointer hover:bg-red-100 transition-colors"
+            onClick={() => handleChartClick('documents', { sentToClient: false })}
+          >
+            <div className="text-center">
+              <p className="text-2xl font-bold text-red-600">{documentMetrics.notSentToClient}</p>
+              <p className="text-sm text-red-800">Not Sent to Client</p>
             </div>
-            <div 
-              className="flex items-center justify-between p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100"
-              onClick={() => handleChartClick('makerChecker', { status: 'Pending' })}
-            >
-              <span className="font-medium text-gray-900">QA Pending</span>
-              <span className="text-lg font-bold text-blue-600">{documentMetrics.makerCheckerPending}</span>
+          </div>
+          <div 
+            className="p-4 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
+            onClick={() => handleChartClick('makerChecker', { status: 'Pending' })}
+          >
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-600">{documentMetrics.makerCheckerPending}</p>
+              <p className="text-sm text-blue-800">QA Pending</p>
+            </div>
+          </div>
+          <div 
+            className="p-4 bg-green-50 rounded-lg cursor-pointer hover:bg-green-100 transition-colors"
+            onClick={() => handleChartClick('frontOffice', { status: 'Pending' })}
+          >
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-600">{documentMetrics.frontOfficePending}</p>
+              <p className="text-sm text-green-800">Front Office Pending</p>
+            </div>
+          </div>
+          <div 
+            className="p-4 bg-orange-50 rounded-lg cursor-pointer hover:bg-orange-100 transition-colors"
+            onClick={() => handleChartClick('tradingSales', { status: 'Pending' })}
+          >
+            <div className="text-center">
+              <p className="text-2xl font-bold text-orange-600">{documentMetrics.tradingSalesPending}</p>
+              <p className="text-sm text-orange-800">Trading Sales Pending</p>
             </div>
           </div>
         </div>
@@ -304,7 +414,7 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
             </button>
           </div>
           <p className="text-sm text-blue-700 mt-1">
-            Click on any chart element to filter the trade data and get a detailed view.
+            Click on any chart element to filter the trade data and get a detailed view. Charts are interconnected for holistic analysis.
           </p>
         </div>
       )}

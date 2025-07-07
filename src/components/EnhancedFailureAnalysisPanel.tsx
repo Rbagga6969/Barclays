@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Clock, User, CheckCircle, XCircle, ArrowRight, FileText, Download, Building, Users } from 'lucide-react';
+import { AlertTriangle, Clock, User, CheckCircle, FileText, Building, Users, ArrowRight } from 'lucide-react';
 import { FailureAnalysis } from '../types/trade';
 
 interface EnhancedFailureAnalysisPanelProps {
   failures: FailureAnalysis[];
   onResolve: (tradeId: string) => void;
-  onEscalate: (tradeId: string) => void;
 }
 
 const EnhancedFailureAnalysisPanel: React.FC<EnhancedFailureAnalysisPanelProps> = ({ 
   failures, 
-  onResolve, 
-  onEscalate 
+  onResolve
 }) => {
   const [selectedFailure, setSelectedFailure] = useState<FailureAnalysis | null>(null);
   const [filter, setFilter] = useState<'all' | 'economic' | 'non-economic' | 'open' | 'in-progress'>('all');
@@ -42,11 +40,20 @@ const EnhancedFailureAnalysisPanel: React.FC<EnhancedFailureAnalysisPanelProps> 
     }
   };
 
+  const handleResolve = (tradeId: string) => {
+    onResolve(tradeId);
+    // Show success message
+    const resolvedFailure = failures.find(f => f.tradeId === tradeId);
+    if (resolvedFailure) {
+      alert(`Trade ${tradeId} has been marked as resolved. The issue "${resolvedFailure.reason}" has been successfully addressed.`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Enhanced Header with filters */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-900">Enhanced Failure Analysis & Break Management</h2>
+        <h2 className="text-xl font-bold text-gray-900">Enhanced Break Management & Resolution</h2>
         <div className="flex space-x-2">
           {['all', 'economic', 'non-economic', 'open', 'in-progress'].map((status) => (
             <button
@@ -132,26 +139,22 @@ const EnhancedFailureAnalysisPanel: React.FC<EnhancedFailureAnalysisPanelProps> 
                 
                 <div className="flex flex-col space-y-2">
                   {failure.status === 'Open' && (
-                    <>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onResolve(failure.tradeId);
-                        }}
-                        className="px-3 py-1 bg-green-600 text-white text-xs rounded-md hover:bg-green-700"
-                      >
-                        Mark Resolved
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEscalate(failure.tradeId);
-                        }}
-                        className="px-3 py-1 bg-orange-600 text-white text-xs rounded-md hover:bg-orange-700"
-                      >
-                        Escalate
-                      </button>
-                    </>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleResolve(failure.tradeId);
+                      }}
+                      className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 flex items-center space-x-2"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Mark Resolved</span>
+                    </button>
+                  )}
+                  {failure.status === 'Resolved' && (
+                    <div className="px-4 py-2 bg-green-100 text-green-800 text-sm rounded-md flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Resolved</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -161,9 +164,9 @@ const EnhancedFailureAnalysisPanel: React.FC<EnhancedFailureAnalysisPanelProps> 
           {filteredFailures.length === 0 && (
             <div className="text-center py-12">
               <CheckCircle className="mx-auto h-12 w-12 text-green-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No failures found</h3>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No breaks found</h3>
               <p className="mt-1 text-sm text-gray-500">
-                {filter === 'all' ? 'All trades are processing successfully.' : `No ${filter.replace('-', ' ')} failures at this time.`}
+                {filter === 'all' ? 'All trades are processing successfully.' : `No ${filter.replace('-', ' ')} breaks at this time.`}
               </p>
             </div>
           )}
@@ -252,13 +255,17 @@ const EnhancedFailureAnalysisPanel: React.FC<EnhancedFailureAnalysisPanelProps> 
                     <span className="text-sm text-gray-600">Assigned to {selectedFailure.pendingWith}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Awaiting action from {selectedFailure.nextActionOwner}</span>
+                    <div className={`w-2 h-2 rounded-full ${selectedFailure.status === 'Resolved' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                    <span className="text-sm text-gray-600">
+                      {selectedFailure.status === 'Resolved' ? 'Resolution completed' : `Awaiting action from ${selectedFailure.nextActionOwner}`}
+                    </span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                    <span className="text-sm text-gray-400">Resolution verification</span>
-                  </div>
+                  {selectedFailure.status !== 'Resolved' && (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                      <span className="text-sm text-gray-400">Resolution verification</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </>
@@ -292,6 +299,12 @@ const EnhancedFailureAnalysisPanel: React.FC<EnhancedFailureAnalysisPanelProps> 
                 <span className="text-sm text-gray-600">Non-Economic Breaks</span>
                 <span className="text-sm font-medium text-orange-600">
                   {failures.filter(f => f.breakType === 'Non-Economic').length}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Resolved</span>
+                <span className="text-sm font-medium text-green-600">
+                  {failures.filter(f => f.status === 'Resolved').length}
                 </span>
               </div>
               <div className="flex justify-between">

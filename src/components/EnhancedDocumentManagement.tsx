@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { FileText, Download, Upload, CheckCircle, XCircle, Clock, User, Shield, AlertTriangle, Eye, Users } from 'lucide-react';
+import { FileText, Download, Upload, CheckCircle, XCircle, Clock, User, Shield, AlertTriangle, Eye, Users, Send } from 'lucide-react';
 import { DocumentStatus, DocumentInfo, EquityTrade, FXTrade } from '../types/trade';
 
 interface EnhancedDocumentManagementProps {
   trade: EquityTrade | FXTrade;
   documentStatus: DocumentStatus;
   onDocumentUpdate: (documentType: string, updates: Partial<DocumentInfo>) => void;
+  onSendToSettlements: () => void;
 }
 
 const EnhancedDocumentManagement: React.FC<EnhancedDocumentManagementProps> = ({ 
   trade, 
   documentStatus, 
-  onDocumentUpdate 
+  onDocumentUpdate,
+  onSendToSettlements
 }) => {
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
 
@@ -156,6 +158,23 @@ const EnhancedDocumentManagement: React.FC<EnhancedDocumentManagementProps> = ({
     return acc;
   }, {} as Record<string, typeof documentTypes>);
 
+  // Check if all required documents are complete
+  const allDocumentsComplete = documentTypes
+    .filter(doc => doc.required)
+    .every(doc => {
+      const docStatus = documentStatus[doc.key as keyof DocumentStatus];
+      return docStatus.submitted && docStatus.clientSigned && docStatus.bankSigned && docStatus.qaStatus === 'Approved';
+    });
+
+  const handleSendToSettlementsClick = () => {
+    if (allDocumentsComplete) {
+      onSendToSettlements();
+      alert(`Trade ${trade.tradeId} has been successfully sent to the Settlements team. All required documents are complete and approved.`);
+    } else {
+      alert('Cannot send to Settlements: Not all required documents are complete and approved.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -169,6 +188,35 @@ const EnhancedDocumentManagement: React.FC<EnhancedDocumentManagementProps> = ({
             </div>
             <div className="text-sm text-gray-500">
               <span className="font-medium">Last updated:</span> {new Date().toLocaleString()}
+            </div>
+            {allDocumentsComplete && (
+              <button
+                onClick={handleSendToSettlementsClick}
+                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center space-x-2"
+              >
+                <Send className="h-4 w-4" />
+                <span>Send to Settlements</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Document Completion Status */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium text-gray-900">Document Completion Status</h4>
+              <p className="text-sm text-gray-600">
+                {documentTypes.filter(doc => doc.required).filter(doc => {
+                  const docStatus = documentStatus[doc.key as keyof DocumentStatus];
+                  return docStatus.submitted && docStatus.clientSigned && docStatus.bankSigned && docStatus.qaStatus === 'Approved';
+                }).length} of {documentTypes.filter(doc => doc.required).length} required documents complete
+              </p>
+            </div>
+            <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+              allDocumentsComplete ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+            }`}>
+              {allDocumentsComplete ? 'Ready for Settlements' : 'Pending Documents'}
             </div>
           </div>
         </div>
