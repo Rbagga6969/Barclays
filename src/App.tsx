@@ -8,7 +8,6 @@ import WorkflowDashboard from './components/WorkflowDashboard';
 import WorkflowTracker from './components/WorkflowTracker';
 import EnhancedFailureAnalysisPanel from './components/EnhancedFailureAnalysisPanel';
 import EnhancedDocumentManagement from './components/EnhancedDocumentManagement';
-import SettlementsPage from './components/SettlementsPage';
 import { EquityTrade, FXTrade, TradeFilters, FailureAnalysis, DocumentStatus } from './types/trade';
 import { TradeWorkflow, WorkflowAction } from './types/workflow';
 import { parseEquityCSV, parseFXCSV } from './utils/csvParser';
@@ -25,7 +24,7 @@ function App() {
   const [documentStatuses, setDocumentStatuses] = useState<Record<string, DocumentStatus>>({});
   const [selectedWorkflow, setSelectedWorkflow] = useState<TradeWorkflow | null>(null);
   const [selectedTradeForDocs, setSelectedTradeForDocs] = useState<EquityTrade | FXTrade | null>(null);
-  const [activeTab, setActiveTab] = useState<'trades' | 'workflows' | 'analytics' | 'failures' | 'documents' | 'settlements'>('trades');
+  const [activeTab, setActiveTab] = useState<'trades' | 'workflows' | 'analytics' | 'failures' | 'documents'>('trades');
   const [filters, setFilters] = useState<TradeFilters>({
     tradeType: 'all',
     status: '',
@@ -282,6 +281,12 @@ function App() {
         ? { ...trade, sentToSettlements: true, settlementsSentAt: new Date().toISOString() }
         : trade
     ));
+
+    // Simulate sending email to settlements team
+    const trade = [...equityTrades, ...fxTrades].find(t => t.tradeId === tradeId);
+    if (trade) {
+      alert(`Trade ${tradeId} has been successfully sent to the Settlements team via email. Excel data export completed.`);
+    }
   };
 
   return (
@@ -306,8 +311,7 @@ function App() {
               { key: 'analytics', label: 'Enhanced Analytics' },
               { key: 'failures', label: 'Break Management' },
               { key: 'documents', label: 'Document Management' },
-              { key: 'workflows', label: 'Workflow Management' },
-              { key: 'settlements', label: 'Settlements' }
+              { key: 'workflows', label: 'Workflow Management' }
             ].map(tab => (
               <button
                 key={tab.key}
@@ -361,6 +365,57 @@ function App() {
 
         {activeTab === 'documents' && (
           <div className="space-y-6">
+            {/* Trade Selection Interface */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Trade for Document Management</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[...equityTrades, ...fxTrades].slice(0, 12).map((trade) => {
+                  const isEquityTrade = 'orderId' in trade;
+                  const docStatus = documentStatuses[trade.tradeId];
+                  const completedDocs = docStatus ? Object.values(docStatus).filter(doc => 
+                    doc.submitted && doc.clientSigned && doc.bankSigned && doc.qaStatus === 'Approved'
+                  ).length : 0;
+                  const totalDocs = 6; // Total number of document types
+                  
+                  return (
+                    <div
+                      key={trade.tradeId}
+                      onClick={() => setSelectedTradeForDocs(trade)}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all hover:border-blue-500 ${
+                        selectedTradeForDocs?.tradeId === trade.tradeId 
+                          ? 'border-blue-500 bg-blue-50' 
+                          : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-gray-900">{trade.tradeId}</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          isEquityTrade ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                        }`}>
+                          {isEquityTrade ? 'Equity' : 'FX'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">{trade.counterparty}</p>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-500">Documents:</span>
+                        <span className={`font-medium ${
+                          completedDocs === totalDocs ? 'text-green-600' : 'text-orange-600'
+                        }`}>
+                          {completedDocs}/{totalDocs}
+                        </span>
+                      </div>
+                      <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5">
+                        <div
+                          className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                          style={{ width: `${(completedDocs / totalDocs) * 100}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {selectedTradeForDocs ? (
               <EnhancedDocumentManagement
                 trade={selectedTradeForDocs}
@@ -377,16 +432,10 @@ function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Trade</h3>
-                <p className="text-gray-500 mb-4">
-                  Choose a trade from the Trade Confirmations tab to manage its documents
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Trade Above</h3>
+                <p className="text-gray-500">
+                  Choose a trade from the grid above to manage its documents and approvals
                 </p>
-                <button
-                  onClick={() => setActiveTab('trades')}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                >
-                  Go to Trade Confirmations
-                </button>
               </div>
             )}
           </div>
@@ -406,13 +455,6 @@ function App() {
               />
             )}
           </div>
-        )}
-
-        {activeTab === 'settlements' && (
-          <SettlementsPage 
-            equityTrades={equityTrades}
-            fxTrades={fxTrades}
-          />
         )}
       </main>
     </div>

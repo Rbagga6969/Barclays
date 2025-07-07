@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, FileText, Download, AlertTriangle, CheckCircle, Clock, XCircle, Shield, User, Send } from 'lucide-react';
+import { Eye, AlertTriangle, CheckCircle, Clock, XCircle, Send } from 'lucide-react';
 import { EquityTrade, FXTrade } from '../types/trade';
 import TradeConfirmationModal from './TradeConfirmationModal';
 
@@ -113,7 +113,7 @@ const TradeTable: React.FC<TradeTableProps> = ({
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <FileText className="h-5 w-5 text-blue-600 mr-2" />
+            <CheckCircle className="h-5 w-5 text-blue-600 mr-2" />
             Trade Confirmations ({trades.length} trades)
           </h3>
         </div>
@@ -230,19 +230,6 @@ const TradeTable: React.FC<TradeTableProps> = ({
                         <Eye className="h-3 w-3 mr-1" />
                         View
                       </button>
-                      <button className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
-                        <Download className="h-3 w-3 mr-1" />
-                        PDF
-                      </button>
-                      {onSelectTradeForDocs && (
-                        <button
-                          onClick={() => onSelectTradeForDocs(trade)}
-                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-                        >
-                          <FileText className="h-3 w-3 mr-1" />
-                          Docs
-                        </button>
-                      )}
                       {canSendToSettlements(trade) && (
                         <button
                           onClick={() => handleSendToSettlements(trade.tradeId)}
@@ -262,7 +249,7 @@ const TradeTable: React.FC<TradeTableProps> = ({
         
         {trades.length === 0 && (
           <div className="text-center py-12">
-            <FileText className="mx-auto h-12 w-12 text-gray-400" />
+            <CheckCircle className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No trades found</h3>
             <p className="mt-1 text-sm text-gray-500">
               Try adjusting your filters to see more results.

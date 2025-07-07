@@ -33,6 +33,22 @@ const TradeConfirmationModal: React.FC<TradeConfirmationModalProps> = ({
     year: 'numeric'
   });
 
+  const handleDownloadPDF = () => {
+    // Simulate PDF generation and download
+    const tradeData = {
+      tradeId: trade.tradeId,
+      counterparty: trade.counterparty,
+      tradeDate: trade.tradeDate,
+      status: isEquityTrade(trade) ? trade.confirmationStatus : trade.confirmationStatus,
+      value: isEquityTrade(trade) ? trade.tradeValue : 'FX Trade',
+      currency: isEquityTrade(trade) ? trade.currency : trade.baseCurrency + '/' + trade.termCurrency
+    };
+
+    // In a real application, this would generate and download a PDF
+    console.log('Generating PDF for trade:', tradeData);
+    alert(`PDF confirmation for trade ${trade.tradeId} has been generated and downloaded successfully.`);
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -291,6 +307,7 @@ const TradeConfirmationModal: React.FC<TradeConfirmationModalProps> = ({
           <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
             <button
               type="button"
+              onClick={handleDownloadPDF}
               className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
             >
               <Download className="h-4 w-4 mr-2" />

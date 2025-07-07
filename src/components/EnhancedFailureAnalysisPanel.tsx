@@ -42,7 +42,6 @@ const EnhancedFailureAnalysisPanel: React.FC<EnhancedFailureAnalysisPanelProps> 
 
   const handleResolve = (tradeId: string) => {
     onResolve(tradeId);
-    // Show success message
     const resolvedFailure = failures.find(f => f.tradeId === tradeId);
     if (resolvedFailure) {
       alert(`Trade ${tradeId} has been marked as resolved. The issue "${resolvedFailure.reason}" has been successfully addressed.`);

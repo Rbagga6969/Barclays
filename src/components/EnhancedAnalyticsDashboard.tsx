@@ -21,6 +21,62 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
   const [selectedChart, setSelectedChart] = useState<string | null>(null);
   const allTrades = [...equityTrades, ...fxTrades];
 
+  // Confirmation Status Distribution (similar to the provided image)
+  const confirmationStatusData = React.useMemo(() => {
+    const statusCounts = allTrades.reduce((acc, trade) => {
+      const status = 'confirmationStatus' in trade ? trade.confirmationStatus : trade.confirmationStatus;
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(statusCounts).map(([status, count]) => ({
+      name: status,
+      value: count,
+      percentage: ((count / allTrades.length) * 100).toFixed(1)
+    }));
+  }, [allTrades]);
+
+  // Trade Type Distribution
+  const tradeTypeData = React.useMemo(() => {
+    return [
+      { name: 'Equity', value: equityTrades.length },
+      { name: 'FX', value: fxTrades.length }
+    ];
+  }, [equityTrades, fxTrades]);
+
+  // Monthly Volume Trend
+  const monthlyVolumeData = React.useMemo(() => {
+    const monthlyTrades = allTrades.reduce((acc, trade) => {
+      const month = new Date(trade.tradeDate).toLocaleDateString('en-US', { month: 'short' });
+      if (!acc[month]) {
+        acc[month] = { month, count: 0, value: 0 };
+      }
+      acc[month].count += 1;
+      if ('tradeValue' in trade) {
+        acc[month].value += trade.tradeValue;
+      }
+      return acc;
+    }, {} as Record<string, any>);
+
+    return Object.values(monthlyTrades).sort((a: any, b: any) => {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+      return months.indexOf(a.month) - months.indexOf(b.month);
+    });
+  }, [allTrades]);
+
+  // Counterparty Analysis
+  const counterpartyData = React.useMemo(() => {
+    const counterpartyCounts = allTrades.reduce((acc, trade) => {
+      acc[trade.counterparty] = (acc[trade.counterparty] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(counterpartyCounts)
+      .map(([name, count]) => ({ name, value: count }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+  }, [allTrades]);
+
   // Break Type Analysis
   const breakTypeData = React.useMemo(() => {
     const breakCounts = allTrades.reduce((acc, trade) => {
@@ -52,24 +108,6 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
     }));
   }, [allTrades]);
 
-  // Pending With Analysis
-  const pendingWithData = React.useMemo(() => {
-    const pendingCounts = allTrades.reduce((acc, trade) => {
-      if (trade.pendingWith) {
-        acc[trade.pendingWith] = (acc[trade.pendingWith] || 0) + 1;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.entries(pendingCounts)
-      .map(([entity, count]) => ({
-        name: entity,
-        value: count,
-        percentage: ((count / allTrades.length) * 100).toFixed(1)
-      }))
-      .sort((a, b) => b.value - a.value);
-  }, [allTrades]);
-
   // Document Status Metrics
   const documentMetrics = React.useMemo(() => {
     let singleSignPending = 0;
@@ -87,7 +125,6 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
         if (doc.makerStatus === 'Pending' || doc.checkerStatus === 'Pending' || doc.qaStatus === 'Pending') makerCheckerPending++;
       });
       
-      // Check for front office and trading sales approvals
       if (docStatus.frontOfficeSalesApproval && docStatus.frontOfficeSalesApproval.makerStatus === 'Pending') {
         frontOfficePending++;
       }
@@ -105,18 +142,6 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
       tradingSalesPending
     };
   }, [documentStatuses]);
-
-  // Document Signature Status Data for Chart
-  const documentSignatureData = React.useMemo(() => {
-    return [
-      { name: 'Single Sign Pending', value: documentMetrics.singleSignPending },
-      { name: 'Double Sign Pending', value: documentMetrics.doubleSignPending },
-      { name: 'Not Sent to Client', value: documentMetrics.notSentToClient },
-      { name: 'QA Pending', value: documentMetrics.makerCheckerPending },
-      { name: 'Front Office Pending', value: documentMetrics.frontOfficePending },
-      { name: 'Trading Sales Pending', value: documentMetrics.tradingSalesPending }
-    ].filter(item => item.value > 0);
-  }, [documentMetrics]);
 
   const handleChartClick = (dataType: string, data?: any) => {
     setSelectedChart(dataType);
@@ -141,7 +166,7 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
       return (
         <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg">
           <p className="font-medium">{`${data.name}: ${data.value}`}</p>
-          <p className="text-sm text-gray-600">{`${data.percentage}% of total`}</p>
+          {data.percentage && <p className="text-sm text-gray-600">{`${data.percentage}% of total`}</p>}
           <p className="text-sm text-gray-600">Click to filter trades</p>
         </div>
       );
@@ -153,6 +178,17 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
     <div className="space-y-6">
       {/* Enhanced Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Trades</p>
+              <p className="text-2xl font-bold text-blue-600">{allTrades.length}</p>
+            </div>
+            <Activity className="h-8 w-8 text-blue-600" />
+          </div>
+          <p className="text-xs text-gray-500 mt-2">All trade confirmations</p>
+        </div>
+
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -174,7 +210,7 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
                 {breakTypeData.find(d => d.name === 'Non-Economic')?.value || 0}
               </p>
             </div>
-            <Activity className="h-8 w-8 text-orange-600" />
+            <FileText className="h-8 w-8 text-orange-600" />
           </div>
           <p className="text-xs text-gray-500 mt-2">Documentation issues</p>
         </div>
@@ -182,39 +218,28 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Maker-Checker Pending</p>
-              <p className="text-2xl font-bold text-blue-600">{documentMetrics.makerCheckerPending}</p>
-            </div>
-            <CheckCircle className="h-8 w-8 text-blue-600" />
-          </div>
-          <p className="text-xs text-gray-500 mt-2">Awaiting QA approval</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Documents Not Sent</p>
+              <p className="text-sm font-medium text-gray-600">Documents Pending</p>
               <p className="text-2xl font-bold text-purple-600">{documentMetrics.notSentToClient}</p>
             </div>
-            <FileText className="h-8 w-8 text-purple-600" />
+            <Users className="h-8 w-8 text-purple-600" />
           </div>
-          <p className="text-xs text-gray-500 mt-2">Pending client delivery</p>
+          <p className="text-xs text-gray-500 mt-2">Awaiting client delivery</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Interactive Break Type Distribution */}
+        {/* Confirmation Status Distribution */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Filter className="h-5 w-5 text-blue-600 mr-2" />
-            Break Type Distribution
-            {selectedChart === 'breakType' && <span className="ml-2 text-sm text-blue-600">(Filtered)</span>}
+            <CheckCircle className="h-5 w-5 text-blue-600 mr-2" />
+            Confirmation Status Distribution
+            {selectedChart === 'confirmationStatus' && <span className="ml-2 text-sm text-blue-600">(Filtered)</span>}
           </h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={breakTypeData}
+                  data={confirmationStatusData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -222,10 +247,10 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
-                  onClick={(data) => handleChartClick('breakType', { breakType: data.name })}
+                  onClick={(data) => handleChartClick('confirmationStatus', { status: data.name })}
                   style={{ cursor: 'pointer' }}
                 >
-                  {breakTypeData.map((entry, index) => (
+                  {confirmationStatusData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -233,79 +258,25 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
               </PieChart>
             </ResponsiveContainer>
           </div>
+          <div className="mt-2 text-center">
+            <p className="text-sm text-gray-600">
+              Total: {confirmationStatusData.reduce((sum, item) => sum + item.value, 0)} confirmations
+            </p>
+          </div>
         </div>
 
-        {/* Interactive Queue Status */}
+        {/* Trade Type Distribution */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <Activity className="h-5 w-5 text-green-600 mr-2" />
-            Queue Status Distribution
-            {selectedChart === 'queueStatus' && <span className="ml-2 text-sm text-green-600">(Filtered)</span>}
-          </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={queueStatusData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar 
-                  dataKey="value" 
-                  fill="#10B981"
-                  onClick={(data) => handleChartClick('queueStatus', { queueStatus: data.name })}
-                  style={{ cursor: 'pointer' }}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-2 text-center">
-            <p className="text-sm text-gray-600">
-              Total: {queueStatusData.reduce((sum, item) => sum + item.value, 0)} trades
-            </p>
-          </div>
-        </div>
-
-        {/* Pending With Analysis */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <AlertTriangle className="h-5 w-5 text-orange-600 mr-2" />
-            Issues Pending With
-            {selectedChart === 'pendingWith' && <span className="ml-2 text-sm text-orange-600">(Filtered)</span>}
-          </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={pendingWithData} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="name" type="category" width={100} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar 
-                  dataKey="value" 
-                  fill="#F59E0B"
-                  onClick={(data) => handleChartClick('pendingWith', { pendingWith: data.name })}
-                  style={{ cursor: 'pointer' }}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-2 text-center">
-            <p className="text-sm text-gray-600">
-              Total: {pendingWithData.reduce((sum, item) => sum + item.value, 0)} pending issues
-            </p>
-          </div>
-        </div>
-
-        {/* Document Signature Status Chart */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Users className="h-5 w-5 text-purple-600 mr-2" />
-            Document & Approval Status
+            Trade Type Distribution
+            {selectedChart === 'tradeType' && <span className="ml-2 text-sm text-green-600">(Filtered)</span>}
           </h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={documentSignatureData}
+                  data={tradeTypeData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -313,10 +284,10 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
-                  onClick={(data) => handleChartClick('documentStatus', { type: data.name })}
+                  onClick={(data) => handleChartClick('tradeType', { tradeType: data.name.toLowerCase() })}
                   style={{ cursor: 'pointer' }}
                 >
-                  {documentSignatureData.map((entry, index) => (
+                  {tradeTypeData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -326,17 +297,78 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
           </div>
           <div className="mt-2 text-center">
             <p className="text-sm text-gray-600">
-              Total pending items: {documentSignatureData.reduce((sum, item) => sum + item.value, 0)}
+              Total: {tradeTypeData.reduce((sum, item) => sum + item.value, 0)} trades
+            </p>
+          </div>
+        </div>
+
+        {/* Monthly Volume Trend */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <TrendingUp className="h-5 w-5 text-purple-600 mr-2" />
+            Monthly Trade Volume
+          </h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={monthlyVolumeData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip content={<CustomTooltip />} />
+                <Area 
+                  type="monotone" 
+                  dataKey="count" 
+                  stroke="#8B5CF6" 
+                  fill="#8B5CF6" 
+                  fillOpacity={0.6}
+                  onClick={(data) => handleChartClick('monthlyVolume', { month: data.month })}
+                  style={{ cursor: 'pointer' }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-2 text-center">
+            <p className="text-sm text-gray-600">
+              Peak: {Math.max(...monthlyVolumeData.map((d: any) => d.count))} trades
+            </p>
+          </div>
+        </div>
+
+        {/* Top Counterparties */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <Users className="h-5 w-5 text-orange-600 mr-2" />
+            Top Counterparties
+          </h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={counterpartyData} layout="horizontal">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="name" type="category" width={80} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar 
+                  dataKey="value" 
+                  fill="#F97316"
+                  onClick={(data) => handleChartClick('counterparty', { counterparty: data.name })}
+                  style={{ cursor: 'pointer' }}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-2 text-center">
+            <p className="text-sm text-gray-600">
+              Top: {counterpartyData[0]?.name} ({counterpartyData[0]?.value} trades)
             </p>
           </div>
         </div>
       </div>
 
-      {/* Detailed Document Status Breakdown */}
+      {/* Document Processing Status */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
           <FileText className="h-5 w-5 text-indigo-600 mr-2" />
-          Document Processing Status Breakdown
+          Document Processing & Approval Status
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <div 
