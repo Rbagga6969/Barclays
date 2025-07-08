@@ -175,6 +175,124 @@ const EnhancedDocumentManagement: React.FC<EnhancedDocumentManagementProps> = ({
     }
   };
 
+  const handleDownloadDocument = (documentType: string, documentUrl: string) => {
+    // Create a mock PDF content for demonstration
+    const pdfContent = generatePDFContent(documentType, trade);
+    
+    // Create a blob and download link
+    const blob = new Blob([pdfContent], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${trade.tradeId}_${documentType}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    alert(`${documentType} document for trade ${trade.tradeId} has been downloaded successfully.`);
+  };
+
+  const generatePDFContent = (documentType: string, trade: EquityTrade | FXTrade): string => {
+    const isEquityTrade = 'orderId' in trade;
+    const currentDate = new Date().toLocaleDateString('en-GB');
+    
+    return `%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+/Resources <<
+/Font <<
+/F1 5 0 R
+>>
+>>
+>>
+endobj
+
+4 0 obj
+<<
+/Length 500
+>>
+stream
+BT
+/F1 12 Tf
+50 750 Td
+(BARCLAYS BANK PLC - ${documentType.toUpperCase()}) Tj
+0 -20 Td
+(Trade ID: ${trade.tradeId}) Tj
+0 -20 Td
+(Counterparty: ${trade.counterparty}) Tj
+0 -20 Td
+(Trade Date: ${trade.tradeDate}) Tj
+${isEquityTrade ? `
+0 -20 Td
+(Trade Type: ${trade.tradeType}) Tj
+0 -20 Td
+(Quantity: ${trade.quantity}) Tj
+0 -20 Td
+(Price: ${trade.price}) Tj
+0 -20 Td
+(Trade Value: ${trade.tradeValue} ${trade.currency}) Tj
+` : `
+0 -20 Td
+(Currency Pair: ${trade.currencyPair}) Tj
+0 -20 Td
+(Transaction: ${trade.buySell}) Tj
+0 -20 Td
+(Product Type: ${trade.productType}) Tj
+`}
+0 -40 Td
+(Document Generated: ${currentDate}) Tj
+0 -20 Td
+(Status: Official Bank Document) Tj
+ET
+endstream
+endobj
+
+5 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+
+xref
+0 6
+0000000000 65535 f 
+0000000010 00000 n 
+0000000079 00000 n 
+0000000136 00000 n 
+0000000271 00000 n 
+0000000823 00000 n 
+trailer
+<<
+/Size 6
+/Root 1 0 R
+>>
+startxref
+901
+%%EOF`;
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -399,12 +517,12 @@ const EnhancedDocumentManagement: React.FC<EnhancedDocumentManagementProps> = ({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.open(doc.documentUrl, '_blank');
+                            handleDownloadDocument(docType.key, doc.documentUrl);
                           }}
                           className="w-full bg-gray-600 text-white py-2 px-3 rounded-md text-sm hover:bg-gray-700 flex items-center justify-center space-x-2"
                         >
                           <Download className="h-4 w-4" />
-                          <span>Download</span>
+                          <span>Download PDF</span>
                         </button>
                       )}
                     </div>

@@ -14,6 +14,7 @@ import { parseEquityCSV, parseFXCSV } from './utils/csvParser';
 import { generateWorkflowForTrade, generateWorkflowActions } from './utils/workflowGenerator';
 import { getRiskLevel } from './utils/failureAnalysis';
 import { generateEnhancedFailureAnalysis, generateEnhancedDocumentStatus, enhanceTradeWithBreakInfo } from './utils/enhancedFailureAnalysis';
+import ManualDataEntry from './components/ManualDataEntry';
 
 function App() {
   const [equityTrades, setEquityTrades] = useState<EquityTrade[]>([]);
@@ -25,6 +26,7 @@ function App() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<TradeWorkflow | null>(null);
   const [selectedTradeForDocs, setSelectedTradeForDocs] = useState<EquityTrade | FXTrade | null>(null);
   const [activeTab, setActiveTab] = useState<'trades' | 'workflows' | 'analytics' | 'failures' | 'documents'>('trades');
+  const [showManualEntry, setShowManualEntry] = useState(false);
   const [filters, setFilters] = useState<TradeFilters>({
     tradeType: 'all',
     status: '',
@@ -289,6 +291,49 @@ function App() {
     }
   };
 
+  const handleManualDataAdd = (newTrade: EquityTrade | FXTrade) => {
+    const isEquityTrade = 'orderId' in newTrade;
+    
+    // Enhance the new trade with additional data
+    const enhancedTrade = enhanceTradeWithBreakInfo({
+      ...newTrade,
+      riskLevel: getRiskLevel(newTrade),
+      failureReason: ['Failed', 'Disputed'].includes(
+        isEquityTrade ? newTrade.confirmationStatus : newTrade.confirmationStatus
+      ) ? generateEnhancedFailureAnalysis(newTrade)?.reason : undefined
+    });
+
+    if (isEquityTrade) {
+      setEquityTrades(prev => [...prev, enhancedTrade as EquityTrade]);
+    } else {
+      setFxTrades(prev => [...prev, enhancedTrade as FXTrade]);
+    }
+
+    // Generate workflow for the new trade
+    const newWorkflow = generateWorkflowForTrade(enhancedTrade);
+    setWorkflows(prev => [...prev, newWorkflow]);
+
+    // Generate workflow actions
+    const newActions = generateWorkflowActions([newWorkflow]);
+    setWorkflowActions(prev => [...prev, ...newActions]);
+
+    // Generate failure analysis if needed
+    const failureAnalysis = generateEnhancedFailureAnalysis(enhancedTrade);
+    if (failureAnalysis) {
+      setFailures(prev => [...prev, failureAnalysis]);
+    }
+
+    // Generate document status
+    const docStatus = generateEnhancedDocumentStatus(enhancedTrade);
+    setDocumentStatuses(prev => ({
+      ...prev,
+      [enhancedTrade.tradeId]: docStatus
+    }));
+
+    setShowManualEntry(false);
+    alert(`Trade ${newTrade.tradeId} has been successfully added to the system.`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -298,9 +343,17 @@ function App() {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             Enhanced Trade Confirmation Management System
           </h2>
-          <p className="text-gray-600">
-            Comprehensive trade lifecycle management with real-time analytics and workflow automation
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-gray-600">
+              Comprehensive trade lifecycle management with real-time analytics and workflow automation
+            </p>
+            <button
+              onClick={() => setShowManualEntry(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center space-x-2"
+            >
+              <span>+ Add Manual Trade</span>
+            </button>
+          </div>
         </div>
 
         {/* Tab Navigation */}
@@ -457,6 +510,14 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* Manual Data Entry Modal */}
+      {showManualEntry && (
+        <ManualDataEntry
+          onClose={() => setShowManualEntry(false)}
+          onSubmit={handleManualDataAdd}
+        />
+      )}
     </div>
   );
 }

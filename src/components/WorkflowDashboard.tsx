@@ -212,7 +212,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
       <div className="bg-white rounded-lg shadow-md">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">All Workflows ({filteredWorkflows.length} trades)</h3>
+            <h3 className="text-lg font-semibold text-gray-900">All Workflows ({workflows.length} total trades, {filteredWorkflows.length} filtered)</h3>
             <div className="flex items-center space-x-4">
               {/* Search */}
               <div className="relative">
