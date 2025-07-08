@@ -334,34 +334,6 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
           </div>
         </div>
 
-        {/* Top Counterparties */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Users className="h-5 w-5 text-orange-600 mr-2" />
-            Top Counterparties
-          </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={counterpartyData} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="name" type="category" width={80} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar 
-                  dataKey="value" 
-                  fill="#F97316"
-                  onClick={(data) => handleChartClick('counterparty', { counterparty: data.name })}
-                  style={{ cursor: 'pointer' }}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-2 text-center">
-            <p className="text-sm text-gray-600">
-              Top: {counterpartyData[0]?.name} ({counterpartyData[0]?.value} trades)
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Document Processing Status */}

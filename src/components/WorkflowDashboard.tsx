@@ -94,7 +94,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
         </div>
         
         <div className="space-y-3">
-          {stageWorkflows.slice(0, 5).map((workflow) => {
+          {stageWorkflows.map((workflow) => {
             const currentStep = workflow.steps.find(s => s.id === workflow.currentStep);
             const completedSteps = workflow.steps.filter(s => s.status === 'completed').length;
             const totalSteps = workflow.steps.length;
@@ -138,12 +138,6 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
           {stageWorkflows.length === 0 && (
             <p className="text-sm text-gray-500 text-center py-4">
               No trades in {stageName.toLowerCase()} stage
-            </p>
-          )}
-          
-          {stageWorkflows.length > 5 && (
-            <p className="text-sm text-blue-600 text-center">
-              +{stageWorkflows.length - 5} more trades
             </p>
           )}
         </div>
@@ -207,7 +201,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
       </div>
 
       {/* Workflow Stages */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {renderStageSection('Drafting', workflowsByStage.drafting, FileText)}
         {renderStageSection('Matching', workflowsByStage.matching, Users)}
         {renderStageSection('Pending Approvals', workflowsByStage.pendingApprovals, AlertTriangle)}
@@ -218,7 +212,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
       <div className="bg-white rounded-lg shadow-md">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">All Workflows</h3>
+            <h3 className="text-lg font-semibold text-gray-900">All Workflows ({filteredWorkflows.length} trades)</h3>
             <div className="flex items-center space-x-4">
               {/* Search */}
               <div className="relative">

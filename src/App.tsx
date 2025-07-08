@@ -368,8 +368,8 @@ function App() {
             {/* Trade Selection Interface */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Trade for Document Management</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[...equityTrades, ...fxTrades].slice(0, 12).map((trade) => {
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[...equityTrades, ...fxTrades].map((trade) => {
                   const isEquityTrade = 'orderId' in trade;
                   const docStatus = documentStatuses[trade.tradeId];
                   const completedDocs = docStatus ? Object.values(docStatus).filter(doc => 
