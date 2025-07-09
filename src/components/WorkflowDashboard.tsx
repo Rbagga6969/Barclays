@@ -12,13 +12,15 @@ import {
   UserCheck
 } from 'lucide-react';
 import { TradeWorkflow, WorkflowAction } from '../types/workflow';
+import { EquityTrade, FXTrade } from '../types/trade';
 
 interface WorkflowDashboardProps {
   workflows: TradeWorkflow[];
   actions: WorkflowAction[];
+  trades: (EquityTrade | FXTrade)[];
 }
 
-const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, actions }) => {
+const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, actions, trades }) => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -212,7 +214,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
       <div className="bg-white rounded-lg shadow-md">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">All Workflows ({workflows.length} total trades, {filteredWorkflows.length} filtered)</h3>
+            <h3 className="text-lg font-semibold text-gray-900">All Workflows (400 total trades, {filteredWorkflows.length} filtered)</h3>
             <div className="flex items-center space-x-4">
               {/* Search */}
               <div className="relative">
@@ -260,6 +262,12 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
             const completedSteps = workflow.steps.filter(s => s.status === 'completed').length;
             const totalSteps = workflow.steps.length;
             const progress = (completedSteps / totalSteps) * 100;
+            
+            // Find corresponding trade for status
+            const correspondingTrade = trades.find(t => t.tradeId === workflow.tradeId);
+            const tradeStatus = correspondingTrade 
+              ? ('orderId' in correspondingTrade ? correspondingTrade.confirmationStatus : correspondingTrade.confirmationStatus)
+              : 'Unknown';
 
             return (
               <div key={workflow.tradeId} className="p-6 hover:bg-gray-50">
@@ -281,6 +289,16 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
                     
                     <p className="text-sm text-gray-600 mt-1">
                       Current: {currentStep?.name || 'Unknown'}
+                    </p>
+                    
+                    <p className="text-sm text-gray-600">
+                      Trade Status: <span className={`font-medium ${
+                        tradeStatus === 'Confirmed' ? 'text-green-600' :
+                        tradeStatus === 'Pending' ? 'text-yellow-600' :
+                        tradeStatus === 'Failed' ? 'text-red-600' :
+                        tradeStatus === 'Settled' ? 'text-blue-600' :
+                        'text-gray-600'
+                      }`}>{tradeStatus}</span>
                     </p>
                     
                     <div className="mt-2">

@@ -1,23 +1,24 @@
 import React, { useState } from 'react';
-import { Eye, AlertTriangle, CheckCircle, Clock, XCircle, Send } from 'lucide-react';
-import { EquityTrade, FXTrade } from '../types/trade';
+import { Eye, AlertTriangle, CheckCircle, Clock, XCircle, Send, ExternalLink } from 'lucide-react';
+import { EquityTrade, FXTrade, FailureAnalysis } from '../types/trade';
 import TradeConfirmationModal from './TradeConfirmationModal';
 
 interface TradeTableProps {
   trades: (EquityTrade | FXTrade)[];
   tradeType: 'equity' | 'fx' | 'all';
   onSelectTradeForDocs?: (trade: EquityTrade | FXTrade) => void;
-  onSendToSettlements?: (tradeId: string) => void;
+  failures: FailureAnalysis[];
 }
 
 const TradeTable: React.FC<TradeTableProps> = ({ 
   trades, 
   tradeType, 
   onSelectTradeForDocs,
-  onSendToSettlements 
+  failures
 }) => {
   const [selectedTrade, setSelectedTrade] = useState<EquityTrade | FXTrade | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [selectedFailure, setSelectedFailure] = useState<FailureAnalysis | null>(null);
 
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
@@ -27,8 +28,6 @@ const TradeTable: React.FC<TradeTableProps> = ({
         return <Clock className="h-4 w-4 text-yellow-500" />;
       case 'failed':
         return <XCircle className="h-4 w-4 text-red-500" />;
-      case 'settled':
-        return <CheckCircle className="h-4 w-4 text-blue-500" />;
       case 'booked':
         return <CheckCircle className="h-4 w-4 text-purple-500" />;
       case 'cancelled':
@@ -49,8 +48,6 @@ const TradeTable: React.FC<TradeTableProps> = ({
         return `${baseClasses} bg-yellow-100 text-yellow-800`;
       case 'failed':
         return `${baseClasses} bg-red-100 text-red-800`;
-      case 'settled':
-        return `${baseClasses} bg-blue-100 text-blue-800`;
       case 'booked':
         return `${baseClasses} bg-purple-100 text-purple-800`;
       case 'cancelled':
@@ -85,9 +82,10 @@ const TradeTable: React.FC<TradeTableProps> = ({
     setShowModal(true);
   };
 
-  const handleSendToSettlements = (tradeId: string) => {
-    if (onSendToSettlements) {
-      onSendToSettlements(tradeId);
+  const handleViewBreakDetails = (tradeId: string) => {
+    const failure = failures.find(f => f.tradeId === tradeId);
+    if (failure) {
+      setSelectedFailure(failure);
     }
   };
 
@@ -103,10 +101,11 @@ const TradeTable: React.FC<TradeTableProps> = ({
     }).format(amount);
   };
 
-  const canSendToSettlements = (trade: EquityTrade | FXTrade) => {
+  // Filter out settled trades
+  const filteredTrades = trades.filter(trade => {
     const status = isEquityTrade(trade) ? trade.confirmationStatus : trade.confirmationStatus;
-    return ['Confirmed', 'Settled'].includes(status) && !('sentToSettlements' in trade && trade.sentToSettlements);
-  };
+    return status !== 'Settled';
+  });
 
   return (
     <>
@@ -114,7 +113,7 @@ const TradeTable: React.FC<TradeTableProps> = ({
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center">
             <CheckCircle className="h-5 w-5 text-blue-600 mr-2" />
-            Trade Confirmations ({trades.length} trades)
+            Trade Confirmations ({filteredTrades.length} trades)
           </h3>
         </div>
         
@@ -141,6 +140,9 @@ const TradeTable: React.FC<TradeTableProps> = ({
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Break Details
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Risk Level
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -152,7 +154,9 @@ const TradeTable: React.FC<TradeTableProps> = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {trades.map((trade) => (
+              {filteredTrades.map((trade) => {
+                const tradeFailure = failures.find(f => f.tradeId === trade.tradeId);
+                return (
                 <tr key={trade.tradeId} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {trade.tradeId}
@@ -160,12 +164,6 @@ const TradeTable: React.FC<TradeTableProps> = ({
                       <div className="text-xs text-red-600 mt-1" title={trade.failureReason}>
                         <AlertTriangle className="h-3 w-3 inline mr-1" />
                         Issue Detected
-                      </div>
-                    )}
-                    {'sentToSettlements' in trade && trade.sentToSettlements && (
-                      <div className="text-xs text-green-600 mt-1">
-                        <Send className="h-3 w-3 inline mr-1" />
-                        Sent to Settlements
                       </div>
                     )}
                   </td>
@@ -211,6 +209,27 @@ const TradeTable: React.FC<TradeTableProps> = ({
                       </span>
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {tradeFailure ? (
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            tradeFailure.breakType === 'Economic' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
+                          }`}>
+                            {tradeFailure.breakType}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          Pending: {tradeFailure.pendingWith}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          Owner: {tradeFailure.nextActionOwner}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">No breaks</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {trade.riskLevel && (
                       <span className={getRiskBadge(trade.riskLevel)}>
@@ -230,24 +249,24 @@ const TradeTable: React.FC<TradeTableProps> = ({
                         <Eye className="h-3 w-3 mr-1" />
                         View
                       </button>
-                      {canSendToSettlements(trade) && (
+                      {tradeFailure && (
                         <button
-                          onClick={() => handleSendToSettlements(trade.tradeId)}
-                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+                          onClick={() => handleViewBreakDetails(trade.tradeId)}
+                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                         >
-                          <Send className="h-3 w-3 mr-1" />
-                          Send
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          Break Details
                         </button>
                       )}
                     </div>
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
         
-        {trades.length === 0 && (
+        {filteredTrades.length === 0 && (
           <div className="text-center py-12">
             <CheckCircle className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No trades found</h3>
@@ -257,6 +276,65 @@ const TradeTable: React.FC<TradeTableProps> = ({
           </div>
         )}
       </div>
+
+      {/* Break Details Modal */}
+      {selectedFailure && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setSelectedFailure(null)}></div>
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Break Analysis - {selectedFailure.tradeId}</h3>
+                  <button
+                    onClick={() => setSelectedFailure(null)}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <XCircle className="h-6 w-6" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Break Type</label>
+                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                      selectedFailure.breakType === 'Economic' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
+                    }`}>
+                      {selectedFailure.breakType} Break
+                    </span>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Reason</label>
+                    <p className="text-sm text-gray-900">{selectedFailure.reason}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Suggested Solution</label>
+                    <p className="text-sm text-gray-900">{selectedFailure.suggestedSolution}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Pending With</label>
+                      <p className="text-sm text-gray-900">{selectedFailure.pendingWith}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Next Action Owner</label>
+                      <p className="text-sm text-gray-900">{selectedFailure.nextActionOwner}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Estimated Resolution Time</label>
+                    <p className="text-sm text-gray-900">{selectedFailure.estimatedResolutionTime}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && selectedTrade && (
         <TradeConfirmationModal

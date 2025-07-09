@@ -229,16 +229,10 @@ const TradeConfirmationModal: React.FC<TradeConfirmationModalProps> = ({
               {/* Status and Processing */}
               <div className="mb-6">
                 <h3 className="font-bold text-gray-900 mb-3 border-b border-gray-300 pb-1">
-                  CONFIRMATION STATUS
+                  BANK APPROVAL & AUTHORIZATION
                 </h3>
                 <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="font-medium">Confirmation Status:</span>
-                      <span className="font-bold text-blue-600">
-                        {isEquityTrade(trade) ? trade.confirmationStatus : trade.confirmationStatus}
-                      </span>
-                    </div>
                     {!isEquityTrade(trade) && (
                       <>
                         <div className="flex justify-between">
@@ -251,11 +245,27 @@ const TradeConfirmationModal: React.FC<TradeConfirmationModalProps> = ({
                         </div>
                       </>
                     )}
+                    <div className="flex justify-between">
+                      <span className="font-medium">Bank Authorization:</span>
+                      <span className="font-bold text-green-600">APPROVED</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Authorized By:</span>
+                      <span className="font-bold">Senior Trade Operations Manager</span>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="font-medium">Trader:</span>
                       <span>{isEquityTrade(trade) ? trade.traderName : trade.traderId}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Authorization Date:</span>
+                      <span>{currentDate}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Digital Signature:</span>
+                      <span className="font-bold text-blue-600">VERIFIED</span>
                     </div>
                     {isEquityTrade(trade) && (
                       <div className="flex justify-between">

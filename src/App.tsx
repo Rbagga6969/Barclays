@@ -6,15 +6,14 @@ import TradeFiltersComponent from './components/TradeFilters';
 import TradeTable from './components/TradeTable';
 import WorkflowDashboard from './components/WorkflowDashboard';
 import WorkflowTracker from './components/WorkflowTracker';
-import EnhancedFailureAnalysisPanel from './components/EnhancedFailureAnalysisPanel';
 import EnhancedDocumentManagement from './components/EnhancedDocumentManagement';
+import OneDriveUpload from './components/OneDriveUpload';
 import { EquityTrade, FXTrade, TradeFilters, FailureAnalysis, DocumentStatus } from './types/trade';
 import { TradeWorkflow, WorkflowAction } from './types/workflow';
 import { parseEquityCSV, parseFXCSV } from './utils/csvParser';
 import { generateWorkflowForTrade, generateWorkflowActions } from './utils/workflowGenerator';
 import { getRiskLevel } from './utils/failureAnalysis';
 import { generateEnhancedFailureAnalysis, generateEnhancedDocumentStatus, enhanceTradeWithBreakInfo } from './utils/enhancedFailureAnalysis';
-import ManualDataEntry from './components/ManualDataEntry';
 
 function App() {
   const [equityTrades, setEquityTrades] = useState<EquityTrade[]>([]);
@@ -25,8 +24,8 @@ function App() {
   const [documentStatuses, setDocumentStatuses] = useState<Record<string, DocumentStatus>>({});
   const [selectedWorkflow, setSelectedWorkflow] = useState<TradeWorkflow | null>(null);
   const [selectedTradeForDocs, setSelectedTradeForDocs] = useState<EquityTrade | FXTrade | null>(null);
-  const [activeTab, setActiveTab] = useState<'trades' | 'workflows' | 'analytics' | 'failures' | 'documents'>('trades');
-  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [activeTab, setActiveTab] = useState<'trades' | 'workflows' | 'analytics' | 'documents'>('trades');
+  const [showOneDriveUpload, setShowOneDriveUpload] = useState(false);
   const [filters, setFilters] = useState<TradeFilters>({
     tradeType: 'all',
     status: '',
@@ -291,47 +290,54 @@ function App() {
     }
   };
 
-  const handleManualDataAdd = (newTrade: EquityTrade | FXTrade) => {
-    const isEquityTrade = 'orderId' in newTrade;
+  const handleManualDataAdd = (newTrade: EquityTrade | FXTrade | (EquityTrade | FXTrade)[]) => {
+    const trades = Array.isArray(newTrade) ? newTrade : [newTrade];
     
-    // Enhance the new trade with additional data
-    const enhancedTrade = enhanceTradeWithBreakInfo({
-      ...newTrade,
-      riskLevel: getRiskLevel(newTrade),
-      failureReason: ['Failed', 'Disputed'].includes(
-        isEquityTrade ? newTrade.confirmationStatus : newTrade.confirmationStatus
-      ) ? generateEnhancedFailureAnalysis(newTrade)?.reason : undefined
+    trades.forEach(trade => {
+      const isEquityTrade = 'orderId' in trade;
+    
+      // Enhance the new trade with additional data
+      const enhancedTrade = enhanceTradeWithBreakInfo({
+        ...trade,
+        riskLevel: getRiskLevel(trade),
+        failureReason: ['Failed', 'Disputed'].includes(
+          isEquityTrade ? trade.confirmationStatus : trade.confirmationStatus
+        ) ? generateEnhancedFailureAnalysis(trade)?.reason : undefined
+      });
+
+      if (isEquityTrade) {
+        setEquityTrades(prev => [...prev, enhancedTrade as EquityTrade]);
+      } else {
+        setFxTrades(prev => [...prev, enhancedTrade as FXTrade]);
+      }
+
+      // Generate workflow for the new trade
+      const newWorkflow = generateWorkflowForTrade(enhancedTrade);
+      setWorkflows(prev => [...prev, newWorkflow]);
+
+      // Generate workflow actions
+      const newActions = generateWorkflowActions([newWorkflow]);
+      setWorkflowActions(prev => [...prev, ...newActions]);
+
+      // Generate failure analysis if needed
+      const failureAnalysis = generateEnhancedFailureAnalysis(enhancedTrade);
+      if (failureAnalysis) {
+        setFailures(prev => [...prev, failureAnalysis]);
+      }
+
+      // Generate document status
+      const docStatus = generateEnhancedDocumentStatus(enhancedTrade);
+      setDocumentStatuses(prev => ({
+        ...prev,
+        [enhancedTrade.tradeId]: docStatus
+      }));
     });
 
-    if (isEquityTrade) {
-      setEquityTrades(prev => [...prev, enhancedTrade as EquityTrade]);
-    } else {
-      setFxTrades(prev => [...prev, enhancedTrade as FXTrade]);
-    }
-
-    // Generate workflow for the new trade
-    const newWorkflow = generateWorkflowForTrade(enhancedTrade);
-    setWorkflows(prev => [...prev, newWorkflow]);
-
-    // Generate workflow actions
-    const newActions = generateWorkflowActions([newWorkflow]);
-    setWorkflowActions(prev => [...prev, ...newActions]);
-
-    // Generate failure analysis if needed
-    const failureAnalysis = generateEnhancedFailureAnalysis(enhancedTrade);
-    if (failureAnalysis) {
-      setFailures(prev => [...prev, failureAnalysis]);
-    }
-
-    // Generate document status
-    const docStatus = generateEnhancedDocumentStatus(enhancedTrade);
-    setDocumentStatuses(prev => ({
-      ...prev,
-      [enhancedTrade.tradeId]: docStatus
-    }));
-
-    setShowManualEntry(false);
-    alert(`Trade ${newTrade.tradeId} has been successfully added to the system.`);
+    setShowOneDriveUpload(false);
+    const message = Array.isArray(newTrade) 
+      ? `${newTrade.length} trades have been successfully imported from OneDrive.`
+      : `Trade ${newTrade.tradeId} has been successfully added to the system.`;
+    alert(message);
   };
 
   return (
@@ -343,17 +349,9 @@ function App() {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             Enhanced Trade Confirmation Management System
           </h2>
-          <div className="flex items-center justify-between">
-            <p className="text-gray-600">
-              Comprehensive trade lifecycle management with real-time analytics and workflow automation
-            </p>
-            <button
-              onClick={() => setShowManualEntry(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center space-x-2"
-            >
-              <span>+ Add Manual Trade</span>
-            </button>
-          </div>
+          <p className="text-gray-600">
+            Comprehensive trade lifecycle management with real-time analytics and workflow automation
+          </p>
         </div>
 
         {/* Tab Navigation */}
@@ -362,7 +360,6 @@ function App() {
             {[
               { key: 'trades', label: 'Trade Confirmations' },
               { key: 'analytics', label: 'Enhanced Analytics' },
-              { key: 'failures', label: 'Break Management' },
               { key: 'documents', label: 'Document Management' },
               { key: 'workflows', label: 'Workflow Management' }
             ].map(tab => (
@@ -395,7 +392,7 @@ function App() {
               trades={filteredTrades} 
               tradeType={filters.tradeType as 'equity' | 'fx' | 'all'}
               onSelectTradeForDocs={setSelectedTradeForDocs}
-              onSendToSettlements={handleSendToSettlements}
+              failures={failures}
             />
           </>
         )}
@@ -409,15 +406,25 @@ function App() {
           />
         )}
 
-        {activeTab === 'failures' && (
-          <EnhancedFailureAnalysisPanel
-            failures={failures}
-            onResolve={handleFailureResolve}
-          />
-        )}
 
         {activeTab === 'documents' && (
           <div className="space-y-6">
+            {/* OneDrive Upload Button */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Import Trades from OneDrive</h3>
+                <button
+                  onClick={() => setShowOneDriveUpload(true)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center space-x-2"
+                >
+                  <span>📁 Import from OneDrive</span>
+                </button>
+              </div>
+              <p className="text-gray-600 mt-2">
+                Upload trade data files directly from your Microsoft OneDrive account
+              </p>
+            </div>
+
             {/* Trade Selection Interface */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Trade for Document Management</h3>
@@ -499,6 +506,7 @@ function App() {
             <WorkflowDashboard 
               workflows={workflows} 
               actions={workflowActions}
+              trades={[...equityTrades, ...fxTrades]}
             />
             
             {selectedWorkflow && (
@@ -511,11 +519,11 @@ function App() {
         )}
       </main>
 
-      {/* Manual Data Entry Modal */}
-      {showManualEntry && (
-        <ManualDataEntry
-          onClose={() => setShowManualEntry(false)}
-          onSubmit={handleManualDataAdd}
+      {/* OneDrive Upload Modal */}
+      {showOneDriveUpload && (
+        <OneDriveUpload
+          onClose={() => setShowOneDriveUpload(false)}
+          onUpload={handleManualDataAdd}
         />
       )}
     </div>
