@@ -24,8 +24,7 @@ function App() {
   const [documentStatuses, setDocumentStatuses] = useState<Record<string, DocumentStatus>>({});
   const [selectedWorkflow, setSelectedWorkflow] = useState<TradeWorkflow | null>(null);
   const [selectedTradeForDocs, setSelectedTradeForDocs] = useState<EquityTrade | FXTrade | null>(null);
-  const [activeTab, setActiveTab] = useState<'trades' | 'workflows' | 'analytics' | 'documents'>('trades');
-  const [showOneDriveUpload, setShowOneDriveUpload] = useState(false);
+  const [activeTab, setActiveTab] = useState<'trades' | 'workflows' | 'analytics' | 'documents' | 'data-management'>('trades');
   const [filters, setFilters] = useState<TradeFilters>({
     tradeType: 'all',
     status: '',
@@ -361,7 +360,8 @@ function App() {
               { key: 'trades', label: 'Trade Confirmations' },
               { key: 'analytics', label: 'Enhanced Analytics' },
               { key: 'documents', label: 'Document Management' },
-              { key: 'workflows', label: 'Workflow Management' }
+              { key: 'workflows', label: 'Workflow Management' },
+              { key: 'data-management', label: 'Data Management' }
             ].map(tab => (
               <button
                 key={tab.key}
@@ -409,22 +409,6 @@ function App() {
 
         {activeTab === 'documents' && (
           <div className="space-y-6">
-            {/* OneDrive Upload Button */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Import Trades from OneDrive</h3>
-                <button
-                  onClick={() => setShowOneDriveUpload(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center space-x-2"
-                >
-                  <span>📁 Import from OneDrive</span>
-                </button>
-              </div>
-              <p className="text-gray-600 mt-2">
-                Upload trade data files directly from your Microsoft OneDrive account
-              </p>
-            </div>
-
             {/* Trade Selection Interface */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Trade for Document Management</h3>
@@ -501,6 +485,9 @@ function App() {
           </div>
         )}
 
+        {activeTab === 'data-management' && (
+          <DataManagement onDataImport={handleManualDataAdd} />
+        )}
         {activeTab === 'workflows' && (
           <div className="space-y-6">
             <WorkflowDashboard 
@@ -518,14 +505,6 @@ function App() {
           </div>
         )}
       </main>
-
-      {/* OneDrive Upload Modal */}
-      {showOneDriveUpload && (
-        <OneDriveUpload
-          onClose={() => setShowOneDriveUpload(false)}
-          onUpload={handleManualDataAdd}
-        />
-      )}
     </div>
   );
 }

@@ -125,7 +125,7 @@ const Dashboard: React.FC<DashboardProps> = ({ equityTrades, fxTrades }) => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirmation Status</h3>
           <div className="space-y-3">
             {Object.entries(statusCounts).map(([status, count]) => {
-              if (count === 0) return null;
+              if (count === 0 || status === 'settled') return null;
               const percentage = (count / allTrades.length) * 100;
               return (
                 <div key={status} className="flex items-center justify-between">

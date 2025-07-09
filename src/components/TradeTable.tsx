@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, AlertTriangle, CheckCircle, Clock, XCircle, Send, ExternalLink } from 'lucide-react';
+import { Eye, AlertTriangle, CheckCircle, Clock, XCircle, Send, ExternalLink, Download } from 'lucide-react';
 import { EquityTrade, FXTrade, FailureAnalysis } from '../types/trade';
 import TradeConfirmationModal from './TradeConfirmationModal';
 
@@ -89,6 +89,161 @@ const TradeTable: React.FC<TradeTableProps> = ({
     }
   };
 
+  const handleDownloadPDF = (trade: EquityTrade | FXTrade) => {
+    // Generate PDF content
+    const pdfContent = generateTradeConfirmationPDF(trade);
+    
+    // Create blob and download
+    const blob = new Blob([pdfContent], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Trade_Confirmation_${trade.tradeId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    alert(`Trade Confirmation Notice for ${trade.tradeId} has been downloaded to your Downloads folder.`);
+  };
+
+  const generateTradeConfirmationPDF = (trade: EquityTrade | FXTrade): string => {
+    const isEquityTrade = 'orderId' in trade;
+    const currentDate = new Date().toLocaleDateString('en-GB');
+    
+    return `%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+/Resources <<
+/Font <<
+/F1 5 0 R
+>>
+>>
+>>
+endobj
+
+4 0 obj
+<<
+/Length 800
+>>
+stream
+BT
+/F1 16 Tf
+50 750 Td
+(BARCLAYS BANK PLC - TRADE CONFIRMATION NOTICE) Tj
+0 -30 Td
+/F1 12 Tf
+(Trade Confirmation Department) Tj
+0 -15 Td
+(1 Churchill Place, London E14 5HP, United Kingdom) Tj
+0 -30 Td
+(TRADE IDENTIFICATION) Tj
+0 -20 Td
+(Trade Reference: ${trade.tradeId}) Tj
+${isEquityTrade ? `
+0 -15 Td
+(Order Reference: ${trade.orderId}) Tj
+` : ''}
+0 -15 Td
+(Trade Date: ${trade.tradeDate}) Tj
+0 -15 Td
+(Settlement Date: ${isEquityTrade ? trade.settlementDate : trade.settlementDate}) Tj
+0 -30 Td
+(COUNTERPARTY DETAILS) Tj
+0 -20 Td
+(Institution: ${trade.counterparty}) Tj
+${isEquityTrade ? `
+0 -15 Td
+(Trading Venue: ${trade.tradingVenue}) Tj
+0 -15 Td
+(Country: ${trade.countryOfTrade}) Tj
+` : ''}
+0 -30 Td
+(TRADE SPECIFICATIONS) Tj
+0 -20 Td
+${isEquityTrade ? `
+(Transaction Type: ${trade.tradeType}) Tj
+0 -15 Td
+(Quantity: ${trade.quantity.toLocaleString()} shares) Tj
+0 -15 Td
+(Price per Share: ${trade.price} ${trade.currency}) Tj
+0 -15 Td
+(Total Trade Value: ${trade.tradeValue.toLocaleString()} ${trade.currency}) Tj
+` : `
+(Currency Pair: ${trade.currencyPair}) Tj
+0 -15 Td
+(Transaction Type: ${trade.buySell}) Tj
+0 -15 Td
+(Product Type: ${trade.productType}) Tj
+0 -15 Td
+(Value Date: ${trade.valueDate}) Tj
+`}
+0 -30 Td
+(BANK APPROVAL & AUTHORIZATION) Tj
+0 -20 Td
+(Bank Authorization: APPROVED) Tj
+0 -15 Td
+(Authorized By: Senior Trade Operations Manager) Tj
+0 -15 Td
+(Authorization Date: ${currentDate}) Tj
+0 -15 Td
+(Digital Signature: VERIFIED) Tj
+0 -30 Td
+(This confirmation is issued in accordance with the terms and conditions) Tj
+0 -15 Td
+(governing trading relationships between Barclays Bank PLC and the counterparty.) Tj
+0 -30 Td
+(Document Generated: ${currentDate}) Tj
+0 -15 Td
+(Reference: ${trade.tradeId}-CONF) Tj
+ET
+endstream
+endobj
+
+5 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+
+xref
+0 6
+0000000000 65535 f 
+0000000010 00000 n 
+0000000079 00000 n 
+0000000136 00000 n 
+0000000271 00000 n 
+0000001123 00000 n 
+trailer
+<<
+/Size 6
+/Root 1 0 R
+>>
+startxref
+1201
+%%EOF`;
+  };
   const isEquityTrade = (trade: EquityTrade | FXTrade): trade is EquityTrade => {
     return 'orderId' in trade;
   };
@@ -248,6 +403,13 @@ const TradeTable: React.FC<TradeTableProps> = ({
                       >
                         <Eye className="h-3 w-3 mr-1" />
                         View
+                      </button>
+                      <button
+                        onClick={() => handleDownloadPDF(trade)}
+                        className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        PDF
                       </button>
                       {tradeFailure && (
                         <button
