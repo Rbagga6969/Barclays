@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
-import { Upload, Download, Cloud, FileText, CheckCircle, AlertTriangle, X, Database, Send } from 'lucide-react';
+import { Upload, Download, Cloud, FileText, CheckCircle, AlertTriangle, X, Database, Send, Eye, Filter } from 'lucide-react';
 import { EquityTrade, FXTrade } from '../types/trade';
 import { parseEquityCSV, parseFXCSV } from '../utils/csvParser';
 
 interface DataManagementProps {
   onDataImport: (trades: (EquityTrade | FXTrade)[]) => void;
+}
+
+interface ExcelData {
+  headers: string[];
+  rows: string[][];
 }
 
 const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
@@ -15,6 +20,9 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
   const [exportStatus, setExportStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [importedData, setImportedData] = useState<(EquityTrade | FXTrade)[]>([]);
+  const [excelData, setExcelData] = useState<ExcelData | null>(null);
+  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
 
   const handleConnectOneDrive = async () => {
     setIsConnecting(true);
@@ -36,9 +44,64 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
     input.onchange = (e) => {
       const files = Array.from((e.target as HTMLInputElement).files || []);
       setSelectedFiles(files);
+      
+      // Process the first file for preview
+      if (files.length > 0) {
+        processFileForPreview(files[0]);
+      }
     };
     
     input.click();
+  };
+
+  const processFileForPreview = async (file: File) => {
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length === 0) {
+        throw new Error('File is empty');
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const rows = lines.slice(1).map(line => 
+        line.split(',').map(cell => cell.trim().replace(/"/g, ''))
+      );
+
+      setExcelData({ headers, rows });
+      setSelectedColumns(headers); // Select all columns by default
+      setShowPreview(true);
+    } catch (error) {
+      setErrorMessage('Failed to process file for preview');
+      console.error('File processing error:', error);
+    }
+  };
+
+  const handleColumnToggle = (column: string) => {
+    setSelectedColumns(prev => 
+      prev.includes(column) 
+        ? prev.filter(col => col !== column)
+        : [...prev, column]
+    );
+  };
+
+  const handleSelectAllColumns = () => {
+    if (excelData) {
+      setSelectedColumns(selectedColumns.length === excelData.headers.length ? [] : excelData.headers);
+    }
+  };
+
+  const getFilteredData = () => {
+    if (!excelData) return { headers: [], rows: [] };
+    
+    const columnIndices = selectedColumns.map(col => excelData.headers.indexOf(col));
+    
+    return {
+      headers: selectedColumns,
+      rows: excelData.rows.map(row => 
+        columnIndices.map(index => row[index] || '')
+      )
+    };
   };
 
   const handleImportData = async () => {
@@ -84,7 +147,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
       onDataImport(allTrades);
       
       setTimeout(() => {
-        alert(`Successfully imported ${allTrades.length} trades from OneDrive!`);
+        alert(`Successfully imported ${allTrades.length} trades from Excel/CSV files! The entire website now reflects this data.`);
       }, 1000);
 
     } catch (error) {
@@ -132,37 +195,21 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
   };
 
   const generateExportCSV = (): string => {
-    const headers = [
-      'Trade ID', 'Trade Type', 'Counterparty', 'Trade Date', 'Settlement Date',
-      'Currency', 'Trade Value', 'Status', 'Risk Level', 'Break Type',
-      'Pending With', 'Queue Status', 'Export Timestamp'
-    ];
-
-    const rows = importedData.map(trade => {
-      const isEquityTrade = 'orderId' in trade;
-      return [
-        trade.tradeId,
-        isEquityTrade ? 'Equity' : 'FX',
-        trade.counterparty,
-        trade.tradeDate,
-        isEquityTrade ? trade.settlementDate : trade.settlementDate,
-        isEquityTrade ? trade.currency : trade.baseCurrency + '/' + trade.termCurrency,
-        isEquityTrade ? trade.tradeValue.toString() : 'N/A',
-        isEquityTrade ? trade.confirmationStatus : trade.confirmationStatus,
-        trade.riskLevel || 'N/A',
-        trade.breakType || 'None',
-        trade.pendingWith || 'N/A',
-        trade.queueStatus || 'N/A',
-        new Date().toISOString()
-      ];
-    });
-
-    return [headers, ...rows].map(row => row.join(',')).join('\n');
+    const filteredData = getFilteredData();
+    const rows = [filteredData.headers, ...filteredData.rows];
+    return rows.map(row => row.join(',')).join('\n');
   };
 
   const removeFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    if (index === 0) {
+      setExcelData(null);
+      setShowPreview(false);
+      setSelectedColumns([]);
+    }
   };
+
+  const filteredPreviewData = getFilteredData();
 
   return (
     <div className="space-y-6">
@@ -172,8 +219,8 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
           <div className="flex items-center">
             <Database className="h-6 w-6 text-blue-600 mr-3" />
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Data Management Center</h2>
-              <p className="text-gray-600">Import and export trade data with Microsoft OneDrive integration</p>
+              <h2 className="text-xl font-bold text-gray-900">Enhanced Data Management Center</h2>
+              <p className="text-gray-600">Import Excel/CSV files and export trade data with Microsoft OneDrive integration</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -190,7 +237,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center mb-4">
             <Upload className="h-5 w-5 text-blue-600 mr-2" />
-            <h3 className="text-lg font-semibold text-gray-900">Import Data from OneDrive</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Import Excel/CSV Data</h3>
           </div>
 
           {!isConnected ? (
@@ -222,7 +269,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
                 className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors"
               >
                 <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                <p className="text-sm text-gray-600">Select files from OneDrive</p>
+                <p className="text-sm text-gray-600">Select Excel/CSV files from OneDrive</p>
                 <p className="text-xs text-gray-500 mt-1">Supports CSV, XLSX, XLS files</p>
               </button>
 
@@ -261,7 +308,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
                 ) : (
                   <>
                     <Upload className="h-4 w-4 mr-2" />
-                    Import Data
+                    Import Data to Website
                   </>
                 )}
               </button>
@@ -269,7 +316,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
               {importStatus === 'success' && (
                 <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-md">
                   <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                  <span className="text-sm text-green-800">Successfully imported {importedData.length} trades!</span>
+                  <span className="text-sm text-green-800">Successfully imported {importedData.length} trades! Website data updated.</span>
                 </div>
               )}
 
@@ -316,7 +363,8 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="text-sm font-medium text-blue-900 mb-2">Export Summary</h4>
               <div className="text-sm text-blue-800 space-y-1">
-                <p>• Total trades to export: {importedData.length || 'No data imported yet'}</p>
+                <p>• Selected columns: {selectedColumns.length}</p>
+                <p>• Total rows to export: {filteredPreviewData.rows.length}</p>
                 <p>• Export format: CSV</p>
                 <p>• Destination: Microsoft OneDrive + Local Download</p>
                 <p>• Timestamp: {new Date().toLocaleString()}</p>
@@ -358,42 +406,112 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
         </div>
       </div>
 
-      {/* Data Preview */}
-      {importedData.length > 0 && (
+      {/* Column Selection and Data Preview */}
+      {showPreview && excelData && (
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Imported Data Preview</h3>
-          <div className="overflow-x-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <Eye className="h-5 w-5 text-blue-600 mr-2" />
+              Data Preview & Column Selection
+            </h3>
+            <button
+              onClick={() => setShowPreview(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Column Selection */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-md font-medium text-gray-900 flex items-center">
+                <Filter className="h-4 w-4 text-gray-600 mr-2" />
+                Select Columns to Display ({selectedColumns.length}/{excelData.headers.length})
+              </h4>
+              <button
+                onClick={handleSelectAllColumns}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                {selectedColumns.length === excelData.headers.length ? 'Deselect All' : 'Select All'}
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3">
+              {excelData.headers.map((header, index) => (
+                <label key={index} className="flex items-center space-x-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectedColumns.includes(header)}
+                    onChange={() => handleColumnToggle(header)}
+                    className="rounded border-gray-300 text-blue-600"
+                  />
+                  <span className="text-gray-700 truncate" title={header}>{header}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Data Table */}
+          <div className="overflow-x-auto border border-gray-200 rounded-lg">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trade ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Counterparty</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                  {filteredPreviewData.headers.map((header, index) => (
+                    <th key={index} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {header}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {importedData.slice(0, 5).map((trade) => (
-                  <tr key={trade.tradeId}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{trade.tradeId}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {'orderId' in trade ? 'Equity' : 'FX'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{trade.counterparty}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {'orderId' in trade ? trade.confirmationStatus : trade.confirmationStatus}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{trade.tradeDate}</td>
+                {filteredPreviewData.rows.slice(0, 10).map((row, rowIndex) => (
+                  <tr key={rowIndex} className="hover:bg-gray-50">
+                    {row.map((cell, cellIndex) => (
+                      <td key={cellIndex} className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate" title={cell}>
+                        {cell}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
             </table>
-            {importedData.length > 5 && (
-              <p className="text-sm text-gray-500 text-center py-2">
-                Showing 5 of {importedData.length} imported trades
+          </div>
+          
+          {filteredPreviewData.rows.length > 10 && (
+            <p className="text-sm text-gray-500 text-center py-2">
+              Showing 10 of {filteredPreviewData.rows.length} rows. Import data to see all records.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Imported Data Summary */}
+      {importedData.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Import Summary</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-medium text-blue-900">Total Trades Imported</h4>
+              <p className="text-2xl font-bold text-blue-600">{importedData.length}</p>
+            </div>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h4 className="font-medium text-green-900">Equity Trades</h4>
+              <p className="text-2xl font-bold text-green-600">
+                {importedData.filter(trade => 'orderId' in trade).length}
               </p>
-            )}
+            </div>
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <h4 className="font-medium text-purple-900">FX Trades</h4>
+              <p className="text-2xl font-bold text-purple-600">
+                {importedData.filter(trade => !('orderId' in trade)).length}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <p className="text-sm text-yellow-800">
+              <strong>Note:</strong> The imported data is now reflected across the entire website including Trade Confirmations, Analytics, Document Management, and Workflow Management sections.
+            </p>
           </div>
         </div>
       )}

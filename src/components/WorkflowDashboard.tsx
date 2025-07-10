@@ -47,10 +47,10 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
 
   const stats = useMemo(() => {
     const total = workflows.length;
-    const drafting = workflowsByStage.drafting.length;
-    const matching = workflowsByStage.matching.length;
-    const pendingApprovals = workflowsByStage.pendingApprovals.length;
-    const ccnr = workflowsByStage.ccnr.length;
+    const drafting = 67; // Fixed value as requested
+    const matching = 133; // Fixed value as requested  
+    const pendingApprovals = 116; // Fixed value as requested
+    const ccnr = 84; // Calculated: 400 - 67 - 133 - 116 = 84
     const overdue = actions.filter(a => a.status === 'overdue').length;
 
     return { total, drafting, matching, pendingApprovals, ccnr, overdue };
@@ -156,7 +156,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
             <Activity className="h-8 w-8 text-blue-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600">Total Workflows</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+              <p className="text-2xl font-bold text-gray-900">400</p>
             </div>
           </div>
         </div>
@@ -166,7 +166,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
             <FileText className="h-8 w-8 text-purple-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600">Drafting</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.drafting}</p>
+              <p className="text-2xl font-bold text-gray-900">67</p>
             </div>
           </div>
         </div>
@@ -176,7 +176,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
             <Users className="h-8 w-8 text-yellow-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600">Matching</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.matching}</p>
+              <p className="text-2xl font-bold text-gray-900">133</p>
             </div>
           </div>
         </div>
@@ -186,7 +186,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
             <AlertTriangle className="h-8 w-8 text-orange-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600">Pending Approvals</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.pendingApprovals}</p>
+              <p className="text-2xl font-bold text-gray-900">116</p>
             </div>
           </div>
         </div>
@@ -196,7 +196,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
             <CheckCircle className="h-8 w-8 text-green-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600">CCNR</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.ccnr}</p>
+              <p className="text-2xl font-bold text-gray-900">84</p>
             </div>
           </div>
         </div>
