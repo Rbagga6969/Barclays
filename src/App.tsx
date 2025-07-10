@@ -8,6 +8,7 @@ import WorkflowDashboard from './components/WorkflowDashboard';
 import WorkflowTracker from './components/WorkflowTracker';
 import EnhancedDocumentManagement from './components/EnhancedDocumentManagement';
 import OneDriveUpload from './components/OneDriveUpload';
+import DataManagement from './components/DataManagement';
 import { EquityTrade, FXTrade, TradeFilters, FailureAnalysis, DocumentStatus } from './types/trade';
 import { TradeWorkflow, WorkflowAction } from './types/workflow';
 import { parseEquityCSV, parseFXCSV } from './utils/csvParser';
