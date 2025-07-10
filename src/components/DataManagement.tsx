@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Upload, Download, Cloud, FileText, CheckCircle, AlertTriangle, X, Database, Send, Eye, Filter } from 'lucide-react';
 import { EquityTrade, FXTrade } from '../types/trade';
-import { parseEquityCSV, parseFXCSV } from '../utils/csvParser';
+import { parseEquityCSV, parseFXCSV, parseGenericCSV, convertGenericToTrades } from '../utils/csvParser';
 
 interface DataManagementProps {
   onDataImport: (trades: (EquityTrade | FXTrade)[]) => void;
@@ -39,7 +39,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.multiple = true;
-    input.accept = '.csv,.xlsx,.xls';
+    input.accept = '.csv,.xlsx,.xls,.txt';
     
     input.onchange = (e) => {
       const files = Array.from((e.target as HTMLInputElement).files || []);
@@ -56,23 +56,41 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
 
   const processFileForPreview = async (file: File) => {
     try {
+      setErrorMessage('');
       const text = await file.text();
-      const lines = text.split('\n').filter(line => line.trim());
       
-      if (lines.length === 0) {
+      if (!text.trim()) {
         throw new Error('File is empty');
       }
 
+      // Handle different file formats
+      let lines: string[];
+      if (file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.txt')) {
+        lines = text.split('\n').filter(line => line.trim());
+      } else {
+        // For Excel files, try to parse as CSV (simplified approach)
+        lines = text.split('\n').filter(line => line.trim());
+      }
+
+      if (lines.length === 0) {
+        throw new Error('No data found in file');
+      }
+
+      // Parse CSV data
       const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
       const rows = lines.slice(1).map(line => 
         line.split(',').map(cell => cell.trim().replace(/"/g, ''))
-      );
+      ).filter(row => row.length > 1 && row.some(cell => cell.trim())); // Filter out empty rows
+
+      if (rows.length === 0) {
+        throw new Error('No data rows found in file');
+      }
 
       setExcelData({ headers, rows });
       setSelectedColumns(headers); // Select all columns by default
       setShowPreview(true);
     } catch (error) {
-      setErrorMessage('Failed to process file for preview');
+      setErrorMessage(`Failed to process file: ${error instanceof Error ? error.message : 'Unknown error'}`);
       console.error('File processing error:', error);
     }
   };
@@ -119,27 +137,51 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
       for (const file of selectedFiles) {
         const text = await file.text();
         
-        if (file.name.toLowerCase().includes('equity') || file.name.toLowerCase().includes('eq')) {
-          const equityTrades = parseEquityCSV(text);
-          allTrades.push(...equityTrades);
-        } else if (file.name.toLowerCase().includes('fx') || file.name.toLowerCase().includes('foreign')) {
-          const fxTrades = parseFXCSV(text);
-          allTrades.push(...fxTrades);
-        } else {
-          try {
-            const equityTrades = parseEquityCSV(text);
-            if (equityTrades.length > 0) {
+        if (!text.trim()) {
+          console.warn(`File ${file.name} is empty, skipping...`);
+          continue;
+        }
+
+        try {
+          // Try to parse as generic CSV first
+          const genericData = parseGenericCSV(text);
+          const convertedTrades = convertGenericToTrades(genericData);
+          
+          if (convertedTrades.length > 0) {
+            allTrades.push(...convertedTrades);
+            console.log(`Successfully parsed ${convertedTrades.length} trades from ${file.name}`);
+          } else {
+            // Fallback to specific parsers
+            if (file.name.toLowerCase().includes('equity') || file.name.toLowerCase().includes('eq')) {
+              const equityTrades = parseEquityCSV(text);
               allTrades.push(...equityTrades);
+            } else if (file.name.toLowerCase().includes('fx') || file.name.toLowerCase().includes('foreign')) {
+              const fxTrades = parseFXCSV(text);
+              allTrades.push(...fxTrades);
+            } else {
+              // Try both parsers
+              try {
+                const equityTrades = parseEquityCSV(text);
+                if (equityTrades.length > 0) {
+                  allTrades.push(...equityTrades);
+                }
+              } catch {
+                try {
+                  const fxTrades = parseFXCSV(text);
+                  allTrades.push(...fxTrades);
+                } catch {
+                  console.warn(`Could not parse file ${file.name} with any parser`);
+                }
+              }
             }
-          } catch {
-            const fxTrades = parseFXCSV(text);
-            allTrades.push(...fxTrades);
           }
+        } catch (fileError) {
+          console.warn(`Error processing file ${file.name}:`, fileError);
         }
       }
 
       if (allTrades.length === 0) {
-        throw new Error('No valid trade data found in the selected files.');
+        throw new Error('No valid trade data found in the selected files. Please ensure your files contain trade information with proper column headers.');
       }
 
       setImportedData(allTrades);
@@ -147,7 +189,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
       onDataImport(allTrades);
       
       setTimeout(() => {
-        alert(`Successfully imported ${allTrades.length} trades from Excel/CSV files! The entire website now reflects this data.`);
+        alert(`Successfully imported ${allTrades.length} trades from ${selectedFiles.length} file(s)! The entire website now reflects this data.`);
       }, 1000);
 
     } catch (error) {
@@ -197,7 +239,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
   const generateExportCSV = (): string => {
     const filteredData = getFilteredData();
     const rows = [filteredData.headers, ...filteredData.rows];
-    return rows.map(row => row.join(',')).join('\n');
+    return rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
   };
 
   const removeFile = (index: number) => {
@@ -211,6 +253,55 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
 
   const filteredPreviewData = getFilteredData();
 
+  // Sample data generator for demonstration
+  const generateSampleData = () => {
+    const sampleTrades: (EquityTrade | FXTrade)[] = [
+      {
+        tradeId: 'SAMPLE001',
+        orderId: 'ORD001',
+        clientId: 'CLIENT001',
+        tradeType: 'Buy' as const,
+        quantity: 1000,
+        price: 150.50,
+        tradeValue: 150500,
+        currency: 'USD',
+        tradeDate: '2024-01-15',
+        settlementDate: '2024-01-17',
+        counterparty: 'Goldman Sachs',
+        tradingVenue: 'NYSE',
+        traderName: 'John Smith',
+        confirmationStatus: 'Confirmed' as const,
+        countryOfTrade: 'US',
+        opsTeamNotes: 'Sample trade data'
+      },
+      {
+        tradeId: 'SAMPLE002',
+        tradeDate: '2024-01-15',
+        valueDate: '2024-01-17',
+        tradeTime: '10:30:00',
+        traderId: 'TRADER001',
+        counterparty: 'JPMorgan',
+        currencyPair: 'EUR/USD',
+        buySell: 'Buy' as const,
+        dealtCurrency: 'EUR',
+        baseCurrency: 'EUR',
+        termCurrency: 'USD',
+        tradeStatus: 'Booked' as const,
+        productType: 'Spot' as const,
+        maturityDate: '2024-01-17',
+        confirmationTimestamp: '2024-01-15T10:30:00Z',
+        settlementDate: '2024-01-17',
+        amendmentFlag: 'No' as const,
+        confirmationMethod: 'Electronic' as const,
+        confirmationStatus: 'Confirmed' as const
+      }
+    ];
+
+    setImportedData(sampleTrades);
+    onDataImport(sampleTrades);
+    alert(`Sample data with ${sampleTrades.length} trades has been loaded for demonstration!`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -223,11 +314,20 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
               <p className="text-gray-600">Import Excel/CSV files and export trade data with Microsoft OneDrive integration</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-            <span className={`text-sm font-medium ${isConnected ? 'text-green-600' : 'text-gray-500'}`}>
-              {isConnected ? 'OneDrive Connected' : 'Not Connected'}
-            </span>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={generateSampleData}
+              className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 flex items-center space-x-2"
+            >
+              <FileText className="h-4 w-4" />
+              <span>Load Sample Data</span>
+            </button>
+            <div className="flex items-center space-x-2">
+              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+              <span className={`text-sm font-medium ${isConnected ? 'text-green-600' : 'text-gray-500'}`}>
+                {isConnected ? 'OneDrive Connected' : 'Not Connected'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -270,7 +370,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
               >
                 <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
                 <p className="text-sm text-gray-600">Select Excel/CSV files from OneDrive</p>
-                <p className="text-xs text-gray-500 mt-1">Supports CSV, XLSX, XLS files</p>
+                <p className="text-xs text-gray-500 mt-1">Supports CSV, XLSX, XLS, TXT files</p>
               </button>
 
               {selectedFiles.length > 0 && (
@@ -282,6 +382,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
                         <div className="flex items-center">
                           <FileText className="h-4 w-4 text-blue-600 mr-2" />
                           <span className="text-sm text-gray-900">{file.name}</span>
+                          <span className="text-xs text-gray-500 ml-2">({(file.size / 1024).toFixed(1)} KB)</span>
                         </div>
                         <button
                           onClick={() => removeFile(index)}
@@ -321,9 +422,15 @@ const DataManagement: React.FC<DataManagementProps> = ({ onDataImport }) => {
               )}
 
               {importStatus === 'error' && (
-                <div className="flex items-center p-3 bg-red-50 border border-red-200 rounded-md">
-                  <AlertTriangle className="h-4 w-4 text-red-600 mr-2" />
-                  <span className="text-sm text-red-800">{errorMessage}</span>
+                <div className="flex items-start p-3 bg-red-50 border border-red-200 rounded-md">
+                  <AlertTriangle className="h-4 w-4 text-red-600 mr-2 mt-0.5" />
+                  <div className="text-sm text-red-800">
+                    <p className="font-medium">Import Error:</p>
+                    <p>{errorMessage}</p>
+                    <p className="mt-2 text-xs">
+                      Tip: Ensure your file contains columns like TradeID, Counterparty, Currency, etc.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
