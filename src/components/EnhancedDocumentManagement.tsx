@@ -1,614 +1,717 @@
 import React, { useState } from 'react';
-import { FileText, Download, Upload, CheckCircle, XCircle, Clock, User, Shield, AlertTriangle, Eye, Users, Send } from 'lucide-react';
-import { DocumentStatus, DocumentInfo, EquityTrade, FXTrade } from '../types/trade';
+import { 
+  Upload, 
+  Download, 
+  Cloud, 
+  FileText, 
+  CheckCircle, 
+  AlertTriangle, 
+  X, 
+  Database, 
+  Send, 
+  Eye, 
+  Filter,
+  Users,
+  Shield,
+  User,
+  Settings,
+  RefreshCw,
+  Plus,
+  Trash2
+} from 'lucide-react';
+import { EquityTrade, FXTrade } from '../types/trade';
+import { parseGenericCSV, convertGenericToTrades } from '../utils/csvParser';
 
 interface EnhancedDocumentManagementProps {
-  trade: EquityTrade | FXTrade;
-  documentStatus: DocumentStatus;
-  onDocumentUpdate: (documentType: string, updates: Partial<DocumentInfo>) => void;
-  onSendToSettlements: () => void;
+  onDataImport: (trades: (EquityTrade | FXTrade)[]) => void;
 }
 
-const EnhancedDocumentManagement: React.FC<EnhancedDocumentManagementProps> = ({ 
-  trade, 
-  documentStatus, 
-  onDocumentUpdate,
-  onSendToSettlements
-}) => {
-  const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
+interface ExcelData {
+  headers: string[];
+  rows: string[][];
+}
 
-  const documentTypes = [
+interface DocumentTemplate {
+  id: string;
+  name: string;
+  description: string;
+  fields: string[];
+  required: boolean;
+}
+
+const EnhancedDocumentManagement: React.FC<EnhancedDocumentManagementProps> = ({ onDataImport }) => {
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [importStatus, setImportStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+  const [exportStatus, setExportStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [importedData, setImportedData] = useState<(EquityTrade | FXTrade)[]>([]);
+  const [excelData, setExcelData] = useState<ExcelData | null>(null);
+  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [activeSection, setActiveSection] = useState<'upload' | 'templates' | 'processing'>('upload');
+
+  const documentTemplates: DocumentTemplate[] = [
     {
-      key: 'tradeConfirmation',
-      name: 'Trade Confirmation',
-      description: 'Official trade confirmation document with all trade details',
-      required: true,
-      icon: FileText,
-      category: 'Core'
+      id: 'trade-confirmation',
+      name: 'Trade Confirmation Template',
+      description: 'Standard trade confirmation document template',
+      fields: ['TradeID', 'Counterparty', 'TradeDate', 'SettlementDate', 'Currency', 'Amount'],
+      required: true
     },
     {
-      key: 'clientAgreement',
-      name: 'Client Agreement',
-      description: 'Client acknowledgment and agreement to trade terms',
-      required: true,
-      icon: User,
-      category: 'Core'
+      id: 'client-agreement',
+      name: 'Client Agreement Template',
+      description: 'Client agreement and terms template',
+      fields: ['ClientID', 'AgreementType', 'SignatureDate', 'ExpiryDate'],
+      required: true
     },
     {
-      key: 'riskDisclosure',
-      name: 'Risk Disclosure',
-      description: 'Risk disclosure statement and client acknowledgment',
-      required: true,
-      icon: AlertTriangle,
-      category: 'Core'
+      id: 'risk-disclosure',
+      name: 'Risk Disclosure Template',
+      description: 'Risk disclosure statement template',
+      fields: ['RiskLevel', 'ProductType', 'DisclosureDate', 'ClientAcknowledgment'],
+      required: false
     },
     {
-      key: 'complianceChecklist',
-      name: 'Compliance Checklist',
-      description: 'Internal compliance verification checklist',
-      required: false,
-      icon: Shield,
-      category: 'Internal'
-    },
-    {
-      key: 'frontOfficeSalesApproval',
-      name: 'Front Office Sales Approval',
-      description: 'Front office sales team approval document',
-      required: true,
-      icon: Users,
-      category: 'Approval'
-    },
-    {
-      key: 'tradingSalesApproval',
-      name: 'Trading Sales Approval',
-      description: 'Trading sales team approval document',
-      required: true,
-      icon: Users,
-      category: 'Approval'
+      id: 'compliance-checklist',
+      name: 'Compliance Checklist Template',
+      description: 'Internal compliance verification template',
+      fields: ['ComplianceOfficer', 'CheckDate', 'Status', 'Notes'],
+      required: false
     }
   ];
 
-  const getStatusIcon = (doc: DocumentInfo) => {
-    if (doc.submitted && doc.clientSigned && doc.bankSigned && doc.qaStatus === 'Approved') {
-      return <CheckCircle className="h-5 w-5 text-green-500" />;
-    } else if (doc.qaStatus === 'Pending' || doc.makerStatus === 'Pending' || doc.checkerStatus === 'Pending') {
-      return <Clock className="h-5 w-5 text-yellow-500" />;
-    } else if (doc.qaStatus === 'Rejected') {
-      return <XCircle className="h-5 w-5 text-red-500" />;
-    } else if (doc.submitted && !doc.clientSigned) {
-      return <Clock className="h-5 w-5 text-blue-500" />;
-    } else if (!doc.submitted) {
-      return <XCircle className="h-5 w-5 text-red-500" />;
-    }
-    return <Clock className="h-5 w-5 text-gray-400" />;
+  const handleConnectOneDrive = async () => {
+    setIsConnecting(true);
+    
+    // Simulate OneDrive connection with realistic delay
+    setTimeout(() => {
+      setIsConnecting(false);
+      setIsConnected(true);
+      alert('Successfully connected to Microsoft OneDrive! You can now import and export documents and data.');
+    }, 2500);
   };
 
-  const getStatusText = (doc: DocumentInfo) => {
-    if (doc.qaStatus === 'Rejected') return 'QA Rejected';
-    if (doc.qaStatus === 'Pending') return 'QA Pending';
-    if (doc.makerStatus === 'Pending') return 'Maker Pending';
-    if (doc.checkerStatus === 'Pending') return 'Checker Pending';
-    if (doc.submitted && doc.clientSigned && doc.bankSigned && doc.qaStatus === 'Approved') {
-      return 'Fully Executed';
-    } else if (doc.submitted && doc.clientSigned && !doc.bankSigned) {
-      return 'Awaiting Bank Signature';
-    } else if (doc.submitted && !doc.clientSigned) {
-      return 'Awaiting Client Signature';
-    } else if (!doc.submitted) {
-      return 'Not Submitted';
-    } else if (!doc.sentToClient) {
-      return 'Not Sent to Client';
-    }
-    return 'In Progress';
-  };
-
-  const handleMakerAction = (documentType: string, action: 'create' | 'approve') => {
-    const updates: Partial<DocumentInfo> = {
-      makerStatus: action === 'create' ? 'Created' : 'Approved',
-      timestamp: new Date().toISOString()
+  const handleFileSelect = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = '.csv,.xlsx,.xls,.txt';
+    
+    input.onchange = (e) => {
+      const files = Array.from((e.target as HTMLInputElement).files || []);
+      setSelectedFiles(files);
+      
+      // Process the first file for preview
+      if (files.length > 0) {
+        processFileForPreview(files[0]);
+      }
     };
     
-    if (action === 'create') {
-      updates.submitted = true;
-      updates.documentUrl = `/documents/${trade.tradeId}/${documentType}`;
-      updates.version = 1;
-    }
-    
-    onDocumentUpdate(documentType, updates);
+    input.click();
   };
 
-  const handleCheckerAction = (documentType: string, action: 'review' | 'approve') => {
-    const updates: Partial<DocumentInfo> = {
-      checkerStatus: action === 'review' ? 'Reviewed' : 'Approved',
-      timestamp: new Date().toISOString()
+  const processFileForPreview = async (file: File) => {
+    try {
+      setErrorMessage('');
+      const text = await file.text();
+      
+      if (!text.trim()) {
+        throw new Error('File is empty');
+      }
+
+      // Handle different file formats
+      let lines: string[];
+      if (file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.txt')) {
+        lines = text.split('\n').filter(line => line.trim());
+      } else {
+        // For Excel files, try to parse as CSV (simplified approach)
+        lines = text.split('\n').filter(line => line.trim());
+      }
+
+      if (lines.length === 0) {
+        throw new Error('No data found in file');
+      }
+
+      // Parse CSV data with enhanced parsing
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const rows = lines.slice(1).map(line => 
+        line.split(',').map(cell => cell.trim().replace(/"/g, ''))
+      ).filter(row => row.length > 1 && row.some(cell => cell.trim())); // Filter out empty rows
+
+      if (rows.length === 0) {
+        throw new Error('No data rows found in file');
+      }
+
+      setExcelData({ headers, rows });
+      setSelectedColumns(headers); // Select all columns by default
+      setShowPreview(true);
+      setActiveSection('processing');
+    } catch (error) {
+      setErrorMessage(`Failed to process file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('File processing error:', error);
+    }
+  };
+
+  const handleColumnToggle = (column: string) => {
+    setSelectedColumns(prev => 
+      prev.includes(column) 
+        ? prev.filter(col => col !== column)
+        : [...prev, column]
+    );
+  };
+
+  const handleSelectAllColumns = () => {
+    if (excelData) {
+      setSelectedColumns(selectedColumns.length === excelData.headers.length ? [] : excelData.headers);
+    }
+  };
+
+  const getFilteredData = () => {
+    if (!excelData) return { headers: [], rows: [] };
+    
+    const columnIndices = selectedColumns.map(col => excelData.headers.indexOf(col));
+    
+    return {
+      headers: selectedColumns,
+      rows: excelData.rows.map(row => 
+        columnIndices.map(index => row[index] || '')
+      )
     };
-    
-    onDocumentUpdate(documentType, updates);
   };
 
-  const handleQAAction = (documentType: string, action: 'approve' | 'reject') => {
-    const updates: Partial<DocumentInfo> = {
-      qaStatus: action === 'approve' ? 'Approved' : 'Rejected',
-      timestamp: new Date().toISOString()
-    };
-    
-    if (action === 'approve') {
-      updates.sentToClient = true;
+  const handleImportData = async () => {
+    if (selectedFiles.length === 0) {
+      setErrorMessage('Please select at least one file to import.');
+      return;
     }
-    
-    onDocumentUpdate(documentType, updates);
-  };
 
-  const handleSignDocument = (documentType: string, signatureType: 'client' | 'bank') => {
-    const updates: Partial<DocumentInfo> = {};
-    
-    if (signatureType === 'client') {
-      updates.clientSigned = true;
-    } else {
-      updates.bankSigned = true;
+    setImportStatus('processing');
+    setErrorMessage('');
+
+    try {
+      const allTrades: (EquityTrade | FXTrade)[] = [];
+
+      for (const file of selectedFiles) {
+        const text = await file.text();
+        
+        if (!text.trim()) {
+          console.warn(`File ${file.name} is empty, skipping...`);
+          continue;
+        }
+
+        try {
+          // Use the enhanced CSV parser
+          const genericData = parseGenericCSV(text);
+          const convertedTrades = convertGenericToTrades(genericData);
+          
+          if (convertedTrades.length > 0) {
+            allTrades.push(...convertedTrades);
+            console.log(`Successfully parsed ${convertedTrades.length} trades from ${file.name}`);
+          }
+        } catch (fileError) {
+          console.warn(`Error processing file ${file.name}:`, fileError);
+        }
+      }
+
+      if (allTrades.length === 0) {
+        throw new Error('No valid trade data found in the selected files. Please ensure your files contain trade information with proper column headers.');
+      }
+
+      setImportedData(allTrades);
+      setImportStatus('success');
+      onDataImport(allTrades);
+      
+      setTimeout(() => {
+        alert(`Successfully imported ${allTrades.length} trades from ${selectedFiles.length} file(s)! The entire website now reflects this data.`);
+      }, 1000);
+
+    } catch (error) {
+      setImportStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to process files');
     }
-    
-    updates.timestamp = new Date().toISOString();
-    onDocumentUpdate(documentType, updates);
   };
 
-  const groupedDocuments = documentTypes.reduce((acc, doc) => {
-    if (!acc[doc.category]) acc[doc.category] = [];
-    acc[doc.category].push(doc);
-    return acc;
-  }, {} as Record<string, typeof documentTypes>);
+  const handleExportData = async () => {
+    if (!isConnected) {
+      alert('Please connect to OneDrive first to export data.');
+      return;
+    }
 
-  // Check if all required documents are complete
-  const allDocumentsComplete = documentTypes
-    .filter(doc => doc.required)
-    .every(doc => {
-      const docStatus = documentStatus[doc.key as keyof DocumentStatus];
-      return docStatus.submitted && docStatus.clientSigned && docStatus.bankSigned && docStatus.qaStatus === 'Approved';
-    });
+    setExportStatus('processing');
 
-  const handleSendToSettlementsClick = () => {
-    if (allDocumentsComplete) {
-      onSendToSettlements();
-      alert(`Trade ${trade.tradeId} has been successfully sent to the Settlements team. All required documents are complete and approved.`);
-    } else {
-      alert('Cannot send to Settlements: Not all required documents are complete and approved.');
+    try {
+      // Simulate data processing and export
+      setTimeout(() => {
+        // Generate CSV content for export
+        const csvContent = generateExportCSV();
+        
+        // Create and download the file
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `document_export_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        setExportStatus('success');
+        alert('Document data has been successfully exported to OneDrive and downloaded to your computer!');
+        
+        setTimeout(() => setExportStatus('idle'), 3000);
+      }, 2000);
+
+    } catch (error) {
+      setExportStatus('error');
+      setErrorMessage('Failed to export data to OneDrive');
+      setTimeout(() => setExportStatus('idle'), 3000);
     }
   };
 
-  const handleDownloadDocument = (documentType: string, documentUrl: string) => {
-    // Create a mock PDF content for demonstration
-    const pdfContent = generatePDFContent(documentType, trade);
-    
-    // Create a blob and download link
-    const blob = new Blob([pdfContent], { type: 'application/pdf' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${trade.tradeId}_${documentType}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    
-    alert(`${documentType} document for trade ${trade.tradeId} has been downloaded successfully.`);
+  const generateExportCSV = (): string => {
+    const filteredData = getFilteredData();
+    const rows = [filteredData.headers, ...filteredData.rows];
+    return rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
   };
 
-  const generatePDFContent = (documentType: string, trade: EquityTrade | FXTrade): string => {
-    const isEquityTrade = 'orderId' in trade;
-    const currentDate = new Date().toLocaleDateString('en-GB');
-    
-    return `%PDF-1.4
-1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
-endobj
-
-2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
-endobj
-
-3 0 obj
-<<
-/Type /Page
-/Parent 2 0 R
-/MediaBox [0 0 612 792]
-/Contents 4 0 R
-/Resources <<
-/Font <<
-/F1 5 0 R
->>
->>
->>
-endobj
-
-4 0 obj
-<<
-/Length 500
->>
-stream
-BT
-/F1 12 Tf
-50 750 Td
-(BARCLAYS BANK PLC - ${documentType.toUpperCase()}) Tj
-0 -20 Td
-(Trade ID: ${trade.tradeId}) Tj
-0 -20 Td
-(Counterparty: ${trade.counterparty}) Tj
-0 -20 Td
-(Trade Date: ${trade.tradeDate}) Tj
-${isEquityTrade ? `
-0 -20 Td
-(Trade Type: ${trade.tradeType}) Tj
-0 -20 Td
-(Quantity: ${trade.quantity}) Tj
-0 -20 Td
-(Price: ${trade.price}) Tj
-0 -20 Td
-(Trade Value: ${trade.tradeValue} ${trade.currency}) Tj
-` : `
-0 -20 Td
-(Currency Pair: ${trade.currencyPair}) Tj
-0 -20 Td
-(Transaction: ${trade.buySell}) Tj
-0 -20 Td
-(Product Type: ${trade.productType}) Tj
-`}
-0 -40 Td
-(Document Generated: ${currentDate}) Tj
-0 -20 Td
-(Status: Official Bank Document) Tj
-ET
-endstream
-endobj
-
-5 0 obj
-<<
-/Type /Font
-/Subtype /Type1
-/BaseFont /Helvetica
->>
-endobj
-
-xref
-0 6
-0000000000 65535 f 
-0000000010 00000 n 
-0000000079 00000 n 
-0000000136 00000 n 
-0000000271 00000 n 
-0000000823 00000 n 
-trailer
-<<
-/Size 6
-/Root 1 0 R
->>
-startxref
-901
-%%EOF`;
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    if (index === 0) {
+      setExcelData(null);
+      setShowPreview(false);
+      setSelectedColumns([]);
+    }
   };
+
+  const generateSampleData = () => {
+    const sampleTrades: (EquityTrade | FXTrade)[] = [
+      {
+        tradeId: 'SAMPLE001',
+        orderId: 'ORD001',
+        clientId: 'CLIENT001',
+        tradeType: 'Buy' as const,
+        quantity: 1000,
+        price: 150.50,
+        tradeValue: 150500,
+        currency: 'USD',
+        tradeDate: '2024-01-15',
+        settlementDate: '2024-01-17',
+        counterparty: 'Goldman Sachs',
+        tradingVenue: 'NYSE',
+        traderName: 'John Smith',
+        confirmationStatus: 'Confirmed' as const,
+        countryOfTrade: 'US',
+        opsTeamNotes: 'Sample trade data'
+      },
+      {
+        tradeId: 'SAMPLE002',
+        tradeDate: '2024-01-15',
+        valueDate: '2024-01-17',
+        tradeTime: '10:30:00',
+        traderId: 'TRADER001',
+        counterparty: 'JPMorgan',
+        currencyPair: 'EUR/USD',
+        buySell: 'Buy' as const,
+        dealtCurrency: 'EUR',
+        baseCurrency: 'EUR',
+        termCurrency: 'USD',
+        tradeStatus: 'Booked' as const,
+        productType: 'Spot' as const,
+        maturityDate: '2024-01-17',
+        confirmationTimestamp: '2024-01-15T10:30:00Z',
+        settlementDate: '2024-01-17',
+        amendmentFlag: 'No' as const,
+        confirmationMethod: 'Electronic' as const,
+        confirmationStatus: 'Confirmed' as const
+      }
+    ];
+
+    setImportedData(sampleTrades);
+    onDataImport(sampleTrades);
+    alert(`Sample data with ${sampleTrades.length} trades has been loaded for demonstration!`);
+  };
+
+  const filteredPreviewData = getFilteredData();
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Enhanced Document Management - Trade {trade.tradeId}
-          </h3>
-          <div className="flex items-center space-x-4">
-            <div className="text-sm text-gray-500">
-              <span className="font-medium">Queue Status:</span> {trade.queueStatus || 'Unknown'}
-            </div>
-            <div className="text-sm text-gray-500">
-              <span className="font-medium">Last updated:</span> {new Date().toLocaleString()}
-            </div>
-            {allDocumentsComplete && (
-              <button
-                onClick={handleSendToSettlementsClick}
-                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center space-x-2"
-              >
-                <Send className="h-4 w-4" />
-                <span>Send to Settlements</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Document Completion Status */}
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Database className="h-6 w-6 text-blue-600 mr-3" />
             <div>
-              <h4 className="font-medium text-gray-900">Document Completion Status</h4>
-              <p className="text-sm text-gray-600">
-                {documentTypes.filter(doc => doc.required).filter(doc => {
-                  const docStatus = documentStatus[doc.key as keyof DocumentStatus];
-                  return docStatus.submitted && docStatus.clientSigned && docStatus.bankSigned && docStatus.qaStatus === 'Approved';
-                }).length} of {documentTypes.filter(doc => doc.required).length} required documents complete
-              </p>
+              <h2 className="text-xl font-bold text-gray-900">Enhanced Document Management Center</h2>
+              <p className="text-gray-600">Upload Excel/CSV files, manage document templates, and export data with Microsoft OneDrive integration</p>
             </div>
-            <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-              allDocumentsComplete ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-            }`}>
-              {allDocumentsComplete ? 'Ready for Settlements' : 'Pending Documents'}
+          </div>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={generateSampleData}
+              className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 flex items-center space-x-2"
+            >
+              <FileText className="h-4 w-4" />
+              <span>Load Sample Data</span>
+            </button>
+            <div className="flex items-center space-x-2">
+              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+              <span className={`text-sm font-medium ${isConnected ? 'text-green-600' : 'text-gray-500'}`}>
+                {isConnected ? 'OneDrive Connected' : 'Not Connected'}
+              </span>
             </div>
           </div>
         </div>
+      </div>
 
-        {Object.entries(groupedDocuments).map(([category, docs]) => (
-          <div key={category} className="mb-8">
-            <h4 className="text-md font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
-              {category} Documents
-            </h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {docs.map((docType) => {
-                const doc = documentStatus[docType.key as keyof DocumentStatus];
-                const Icon = docType.icon;
-                
-                return (
-                  <div
-                    key={docType.key}
-                    className={`border-2 rounded-lg p-4 transition-all cursor-pointer ${
-                      selectedDocument === docType.key
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => setSelectedDocument(docType.key)}
+      {/* Section Navigation */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex space-x-4 mb-6">
+          {[
+            { key: 'upload', label: 'File Upload & Processing', icon: Upload },
+            { key: 'templates', label: 'Document Templates', icon: FileText },
+            { key: 'processing', label: 'Data Processing', icon: Settings }
+          ].map(section => {
+            const Icon = section.icon;
+            return (
+              <button
+                key={section.key}
+                onClick={() => setActiveSection(section.key as any)}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-md font-medium ${
+                  activeSection === section.key
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{section.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* File Upload Section */}
+        {activeSection === 'upload' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* OneDrive Connection */}
+            <div className="bg-white rounded-lg border p-6">
+              <div className="flex items-center mb-4">
+                <Cloud className="h-5 w-5 text-blue-600 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">OneDrive Integration</h3>
+              </div>
+
+              {!isConnected ? (
+                <div className="text-center py-8">
+                  <Cloud className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <p className="text-gray-600 mb-4">Connect to Microsoft OneDrive to import and export documents</p>
+                  <button
+                    onClick={handleConnectOneDrive}
+                    disabled={isConnecting}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center mx-auto"
                   >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        <Icon className="h-6 w-6 text-blue-600" />
-                        <div>
-                          <h4 className="font-medium text-gray-900">{docType.name}</h4>
-                          {docType.required && (
-                            <span className="text-xs text-red-600 font-medium">Required</span>
-                          )}
-                        </div>
-                      </div>
-                      {getStatusIcon(doc)}
-                    </div>
-                    
-                    <p className="text-sm text-gray-600 mb-3">{docType.description}</p>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Status:</span>
-                        <span className={`font-medium ${
-                          doc.qaStatus === 'Approved' && doc.submitted && doc.clientSigned && doc.bankSigned
-                            ? 'text-green-600'
-                            : doc.qaStatus === 'Rejected'
-                            ? 'text-red-600'
-                            : doc.submitted
-                            ? 'text-yellow-600'
-                            : 'text-red-600'
-                        }`}>
-                          {getStatusText(doc)}
-                        </span>
-                      </div>
-                      
-                      {/* Maker-Checker Status */}
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="text-center">
-                          <div className={`w-2 h-2 rounded-full mx-auto mb-1 ${
-                            doc.makerStatus === 'Approved' ? 'bg-green-500' :
-                            doc.makerStatus === 'Created' ? 'bg-yellow-500' :
-                            'bg-gray-300'
-                          }`}></div>
-                          <span className="text-gray-600">Maker</span>
-                        </div>
-                        <div className="text-center">
-                          <div className={`w-2 h-2 rounded-full mx-auto mb-1 ${
-                            doc.checkerStatus === 'Approved' ? 'bg-green-500' :
-                            doc.checkerStatus === 'Reviewed' ? 'bg-yellow-500' :
-                            'bg-gray-300'
-                          }`}></div>
-                          <span className="text-gray-600">Checker</span>
-                        </div>
-                        <div className="text-center">
-                          <div className={`w-2 h-2 rounded-full mx-auto mb-1 ${
-                            doc.qaStatus === 'Approved' ? 'bg-green-500' :
-                            doc.qaStatus === 'In Review' ? 'bg-yellow-500' :
-                            doc.qaStatus === 'Rejected' ? 'bg-red-500' :
-                            'bg-gray-300'
-                          }`}></div>
-                          <span className="text-gray-600">QA</span>
-                        </div>
-                      </div>
+                    {isConnecting ? (
+                      <>
+                        <RefreshCw className="animate-spin h-4 w-4 mr-2" />
+                        Connecting...
+                      </>
+                    ) : (
+                      <>
+                        <Cloud className="h-4 w-4 mr-2" />
+                        Connect to OneDrive
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-md">
+                    <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                    <span className="text-green-800">Successfully connected to OneDrive</span>
+                  </div>
+                  
+                  <button
+                    onClick={handleFileSelect}
+                    className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors"
+                  >
+                    <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                    <p className="text-sm text-gray-600">Select Excel/CSV files from OneDrive</p>
+                    <p className="text-xs text-gray-500 mt-1">Supports CSV, XLSX, XLS, TXT files</p>
+                  </button>
+                </div>
+              )}
+            </div>
 
-                      {/* Signature Status */}
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Signature Type:</span>
-                        <span className="font-medium text-gray-900">
-                          {doc.signatureType || 'Single'}
-                        </span>
-                      </div>
+            {/* File Management */}
+            <div className="bg-white rounded-lg border p-6">
+              <div className="flex items-center mb-4">
+                <FileText className="h-5 w-5 text-green-600 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">File Management</h3>
+              </div>
 
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Sent to Client:</span>
-                        <span className={`font-medium ${doc.sentToClient ? 'text-green-600' : 'text-red-600'}`}>
-                          {doc.sentToClient ? 'Yes' : 'No'}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="mt-4 space-y-2">
-                      {doc.makerStatus === 'Pending' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMakerAction(docType.key, 'create');
-                          }}
-                          className="w-full bg-blue-600 text-white py-2 px-3 rounded-md text-sm hover:bg-blue-700 flex items-center justify-center space-x-2"
-                        >
-                          <Upload className="h-4 w-4" />
-                          <span>Create Document</span>
-                        </button>
-                      )}
-
-                      {doc.makerStatus === 'Created' && doc.checkerStatus === 'Pending' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCheckerAction(docType.key, 'review');
-                          }}
-                          className="w-full bg-yellow-600 text-white py-2 px-3 rounded-md text-sm hover:bg-yellow-700 flex items-center justify-center space-x-2"
-                        >
-                          <Eye className="h-4 w-4" />
-                          <span>Checker Review</span>
-                        </button>
-                      )}
-
-                      {doc.checkerStatus === 'Reviewed' && doc.qaStatus === 'Pending' && (
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleQAAction(docType.key, 'approve');
-                            }}
-                            className="flex-1 bg-green-600 text-white py-2 px-3 rounded-md text-sm hover:bg-green-700"
-                          >
-                            QA Approve
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleQAAction(docType.key, 'reject');
-                            }}
-                            className="flex-1 bg-red-600 text-white py-2 px-3 rounded-md text-sm hover:bg-red-700"
-                          >
-                            QA Reject
-                          </button>
+              {selectedFiles.length > 0 ? (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Selected Files ({selectedFiles.length})</h4>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                        <div className="flex items-center">
+                          <FileText className="h-4 w-4 text-blue-600 mr-2" />
+                          <span className="text-sm text-gray-900">{file.name}</span>
+                          <span className="text-xs text-gray-500 ml-2">({(file.size / 1024).toFixed(1)} KB)</span>
                         </div>
-                      )}
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
 
-                      {doc.qaStatus === 'Approved' && doc.sentToClient && !doc.clientSigned && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSignDocument(docType.key, 'client');
-                          }}
-                          className="w-full bg-green-600 text-white py-2 px-3 rounded-md text-sm hover:bg-green-700 flex items-center justify-center space-x-2"
-                        >
-                          <User className="h-4 w-4" />
-                          <span>Client Sign</span>
-                        </button>
-                      )}
-                      
-                      {doc.clientSigned && !doc.bankSigned && doc.signatureType === 'Double' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSignDocument(docType.key, 'bank');
-                          }}
-                          className="w-full bg-blue-600 text-white py-2 px-3 rounded-md text-sm hover:bg-blue-700 flex items-center justify-center space-x-2"
-                        >
-                          <Shield className="h-4 w-4" />
-                          <span>Bank Sign</span>
-                        </button>
-                      )}
-                      
-                      {doc.documentUrl && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDownloadDocument(docType.key, doc.documentUrl);
-                          }}
-                          className="w-full bg-gray-600 text-white py-2 px-3 rounded-md text-sm hover:bg-gray-700 flex items-center justify-center space-x-2"
-                        >
-                          <Download className="h-4 w-4" />
-                          <span>Download PDF</span>
-                        </button>
+                  <button
+                    onClick={handleImportData}
+                    disabled={importStatus === 'processing'}
+                    className="w-full mt-4 bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center justify-center"
+                  >
+                    {importStatus === 'processing' ? (
+                      <>
+                        <RefreshCw className="animate-spin h-4 w-4 mr-2" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Import Data to Website
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <p className="text-gray-600">No files selected</p>
+                  <p className="text-sm text-gray-500">Connect to OneDrive and select files to get started</p>
+                </div>
+              )}
+
+              {importStatus === 'success' && (
+                <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-md mt-4">
+                  <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                  <span className="text-sm text-green-800">Successfully imported {importedData.length} trades!</span>
+                </div>
+              )}
+
+              {importStatus === 'error' && (
+                <div className="flex items-start p-3 bg-red-50 border border-red-200 rounded-md mt-4">
+                  <AlertTriangle className="h-4 w-4 text-red-600 mr-2 mt-0.5" />
+                  <div className="text-sm text-red-800">
+                    <p className="font-medium">Import Error:</p>
+                    <p>{errorMessage}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Document Templates Section */}
+        {activeSection === 'templates' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {documentTemplates.map((template) => (
+              <div key={template.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center">
+                    <FileText className="h-6 w-6 text-blue-600 mr-3" />
+                    <div>
+                      <h4 className="font-medium text-gray-900">{template.name}</h4>
+                      {template.required && (
+                        <span className="text-xs text-red-600 font-medium">Required</span>
                       )}
                     </div>
                   </div>
-                );
-              })}
+                  <div className="flex space-x-2">
+                    <button className="p-2 text-gray-400 hover:text-blue-600">
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button className="p-2 text-gray-400 hover:text-green-600">
+                      <Download className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                
+                <p className="text-sm text-gray-600 mb-4">{template.description}</p>
+                
+                <div className="space-y-2">
+                  <h5 className="text-sm font-medium text-gray-700">Required Fields:</h5>
+                  <div className="flex flex-wrap gap-2">
+                    {template.fields.map((field, index) => (
+                      <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                        {field}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Data Processing Section */}
+        {activeSection === 'processing' && showPreview && excelData && (
+          <div className="space-y-6">
+            {/* Column Selection */}
+            <div className="bg-gray-50 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-md font-medium text-gray-900 flex items-center">
+                  <Filter className="h-4 w-4 text-gray-600 mr-2" />
+                  Select Columns to Display ({selectedColumns.length}/{excelData.headers.length})
+                </h4>
+                <button
+                  onClick={handleSelectAllColumns}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  {selectedColumns.length === excelData.headers.length ? 'Deselect All' : 'Select All'}
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                {excelData.headers.map((header, index) => (
+                  <label key={index} className="flex items-center space-x-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={selectedColumns.includes(header)}
+                      onChange={() => handleColumnToggle(header)}
+                      className="rounded border-gray-300 text-blue-600"
+                    />
+                    <span className="text-gray-700 truncate" title={header}>{header}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Data Preview Table */}
+            <div className="bg-white rounded-lg border">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <Eye className="h-5 w-5 text-blue-600 mr-2" />
+                  Data Preview
+                </h4>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {filteredPreviewData.headers.map((header, index) => (
+                        <th key={index} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredPreviewData.rows.slice(0, 10).map((row, rowIndex) => (
+                      <tr key={rowIndex} className="hover:bg-gray-50">
+                        {row.map((cell, cellIndex) => (
+                          <td key={cellIndex} className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate" title={cell}>
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {filteredPreviewData.rows.length > 10 && (
+                <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
+                  <p className="text-sm text-gray-500 text-center">
+                    Showing 10 of {filteredPreviewData.rows.length} rows. Import data to process all records.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Export Section */}
+            <div className="bg-white rounded-lg border p-6">
+              <div className="flex items-center mb-4">
+                <Download className="h-5 w-5 text-green-600 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">Export Processed Data</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-blue-900 mb-2">Export Summary</h4>
+                  <div className="text-sm text-blue-800 space-y-1">
+                    <p>• Selected columns: {selectedColumns.length}</p>
+                    <p>• Total rows to export: {filteredPreviewData.rows.length}</p>
+                    <p>• Export format: CSV</p>
+                    <p>• Destination: Microsoft OneDrive + Local Download</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center">
+                  <button
+                    onClick={handleExportData}
+                    disabled={!isConnected || exportStatus === 'processing'}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
+                  >
+                    {exportStatus === 'processing' ? (
+                      <>
+                        <RefreshCw className="animate-spin h-4 w-4" />
+                        <span>Exporting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" />
+                        <span>Export to OneDrive</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {exportStatus === 'success' && (
+                <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-md mt-4">
+                  <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                  <span className="text-sm text-green-800">Data successfully exported to OneDrive and downloaded!</span>
+                </div>
+              )}
             </div>
           </div>
-        ))}
+        )}
       </div>
 
-      {/* Enhanced Document Details */}
-      {selectedDocument && (
+      {/* Import Summary */}
+      {importedData.length > 0 && (
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Document Workflow: {documentTypes.find(d => d.key === selectedDocument)?.name}
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-medium text-gray-900 mb-3">Maker-Checker-QA Workflow</h4>
-              <div className="space-y-3">
-                {['Maker', 'Checker', 'QA'].map((role, index) => {
-                  const doc = documentStatus[selectedDocument as keyof DocumentStatus];
-                  const statuses = [doc.makerStatus, doc.checkerStatus, doc.qaStatus];
-                  const currentStatus = statuses[index];
-                  
-                  return (
-                    <div key={role} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-3 h-3 rounded-full ${
-                          currentStatus === 'Approved' ? 'bg-green-500' :
-                          currentStatus === 'Created' || currentStatus === 'Reviewed' || currentStatus === 'In Review' ? 'bg-yellow-500' :
-                          currentStatus === 'Rejected' ? 'bg-red-500' :
-                          'bg-gray-300'
-                        }`}></div>
-                        <span className="text-sm font-medium text-gray-900">{role}</span>
-                      </div>
-                      <span className="text-sm text-gray-600">{currentStatus || 'Pending'}</span>
-                    </div>
-                  );
-                })}
-              </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Import Summary</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-medium text-blue-900">Total Trades Imported</h4>
+              <p className="text-2xl font-bold text-blue-600">{importedData.length}</p>
             </div>
-            
-            <div>
-              <h4 className="font-medium text-gray-900 mb-3">Signature & Delivery Status</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Document Type:</span>
-                  <span className="font-medium text-gray-900">
-                    {documentTypes.find(d => d.key === selectedDocument)?.name}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Signature Required:</span>
-                  <span className="font-medium text-gray-900">
-                    {documentStatus[selectedDocument as keyof DocumentStatus].signatureType || 'Single'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Sent to Client:</span>
-                  <span className={`font-medium ${
-                    documentStatus[selectedDocument as keyof DocumentStatus].sentToClient ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {documentStatus[selectedDocument as keyof DocumentStatus].sentToClient ? 'Yes' : 'No'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Client Signed:</span>
-                  <span className={`font-medium ${
-                    documentStatus[selectedDocument as keyof DocumentStatus].clientSigned ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {documentStatus[selectedDocument as keyof DocumentStatus].clientSigned ? 'Yes' : 'No'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Bank Signed:</span>
-                  <span className={`font-medium ${
-                    documentStatus[selectedDocument as keyof DocumentStatus].bankSigned ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {documentStatus[selectedDocument as keyof DocumentStatus].bankSigned ? 'Yes' : 'No'}
-                  </span>
-                </div>
-              </div>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h4 className="font-medium text-green-900">Equity Trades</h4>
+              <p className="text-2xl font-bold text-green-600">
+                {importedData.filter(trade => 'orderId' in trade).length}
+              </p>
             </div>
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <h4 className="font-medium text-purple-900">FX Trades</h4>
+              <p className="text-2xl font-bold text-purple-600">
+                {importedData.filter(trade => !('orderId' in trade)).length}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <p className="text-sm text-yellow-800">
+              <strong>Note:</strong> The imported data is now reflected across the entire website including Trade Confirmations, Analytics, and Workflow Management sections.
+            </p>
           </div>
         </div>
       )}

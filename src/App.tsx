@@ -7,8 +7,6 @@ import TradeTable from './components/TradeTable';
 import WorkflowDashboard from './components/WorkflowDashboard';
 import WorkflowTracker from './components/WorkflowTracker';
 import EnhancedDocumentManagement from './components/EnhancedDocumentManagement';
-import OneDriveUpload from './components/OneDriveUpload';
-import DataManagement from './components/DataManagement';
 import { EquityTrade, FXTrade, TradeFilters, FailureAnalysis, DocumentStatus } from './types/trade';
 import { TradeWorkflow, WorkflowAction } from './types/workflow';
 import { parseEquityCSV, parseFXCSV } from './utils/csvParser';
@@ -361,8 +359,7 @@ function App() {
               { key: 'trades', label: 'Trade Confirmations' },
               { key: 'analytics', label: 'Enhanced Analytics' },
               { key: 'documents', label: 'Document Management' },
-              { key: 'workflows', label: 'Workflow Management' },
-              { key: 'data-management', label: 'Data Management' }
+              { key: 'workflows', label: 'Workflow Management' }
             ].map(tab => (
               <button
                 key={tab.key}
@@ -409,19 +406,9 @@ function App() {
 
 
         {activeTab === 'documents' && (
-          <div className="w-full h-screen">
-            <iframe
-              src="https://euphonious-selkie-772032.netlify.app"
-              className="w-full h-full border-0 rounded-lg shadow-md"
-              title="Document Management System"
-              allow="fullscreen"
-            />
-          </div>
+          <EnhancedDocumentManagement onDataImport={handleManualDataAdd} />
         )}
 
-        {activeTab === 'data-management' && (
-          <DataManagement onDataImport={handleManualDataAdd} />
-        )}
         {activeTab === 'workflows' && (
           <div className="space-y-6">
             <WorkflowDashboard 
