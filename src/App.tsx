@@ -409,80 +409,13 @@ function App() {
 
 
         {activeTab === 'documents' && (
-          <div className="space-y-6">
-            {/* Trade Selection Interface */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Trade for Document Management</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[...equityTrades, ...fxTrades].map((trade) => {
-                  const isEquityTrade = 'orderId' in trade;
-                  const docStatus = documentStatuses[trade.tradeId];
-                  const completedDocs = docStatus ? Object.values(docStatus).filter(doc => 
-                    doc.submitted && doc.clientSigned && doc.bankSigned && doc.qaStatus === 'Approved'
-                  ).length : 0;
-                  const totalDocs = 6; // Total number of document types
-                  
-                  return (
-                    <div
-                      key={trade.tradeId}
-                      onClick={() => setSelectedTradeForDocs(trade)}
-                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all hover:border-blue-500 ${
-                        selectedTradeForDocs?.tradeId === trade.tradeId 
-                          ? 'border-blue-500 bg-blue-50' 
-                          : 'border-gray-200'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-gray-900">{trade.tradeId}</span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          isEquityTrade ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                        }`}>
-                          {isEquityTrade ? 'Equity' : 'FX'}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">{trade.counterparty}</p>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-500">Documents:</span>
-                        <span className={`font-medium ${
-                          completedDocs === totalDocs ? 'text-green-600' : 'text-orange-600'
-                        }`}>
-                          {completedDocs}/{totalDocs}
-                        </span>
-                      </div>
-                      <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5">
-                        <div
-                          className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-                          style={{ width: `${(completedDocs / totalDocs) * 100}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {selectedTradeForDocs ? (
-              <EnhancedDocumentManagement
-                trade={selectedTradeForDocs}
-                documentStatus={documentStatuses[selectedTradeForDocs.tradeId]}
-                onDocumentUpdate={(docType, updates) => 
-                  handleDocumentUpdate(selectedTradeForDocs.tradeId, docType, updates)
-                }
-                onSendToSettlements={() => handleSendToSettlements(selectedTradeForDocs.tradeId)}
-              />
-            ) : (
-              <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                <div className="text-gray-400 mb-4">
-                  <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Trade Above</h3>
-                <p className="text-gray-500">
-                  Choose a trade from the grid above to manage its documents and approvals
-                </p>
-              </div>
-            )}
+          <div className="w-full h-screen">
+            <iframe
+              src="https://euphonious-selkie-772032.netlify.app"
+              className="w-full h-full border-0 rounded-lg shadow-md"
+              title="Document Management System"
+              allow="fullscreen"
+            />
           </div>
         )}
 

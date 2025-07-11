@@ -86,21 +86,46 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
 
   const renderStageSection = (stageName: string, stageWorkflows: TradeWorkflow[], icon: React.ElementType) => {
     const Icon = icon;
+    
+    // For Drafting and CCNR, show all active trades
+    let displayWorkflows = stageWorkflows;
+    if (stageName === 'Drafting') {
+      // Show all trades that are not settled
+      displayWorkflows = workflows.filter(w => {
+        const trade = trades.find(t => t.tradeId === w.tradeId);
+        const status = trade ? ('orderId' in trade ? trade.confirmationStatus : trade.confirmationStatus) : '';
+        return status !== 'Settled';
+      }).slice(0, 67); // Show 67 as specified
+    } else if (stageName === 'CCNR (Complete)') {
+      // Show all completed trades
+      displayWorkflows = workflows.filter(w => {
+        const trade = trades.find(t => t.tradeId === w.tradeId);
+        const status = trade ? ('orderId' in trade ? trade.confirmationStatus : trade.confirmationStatus) : '';
+        return ['Confirmed', 'Settled'].includes(status);
+      }).slice(0, 84); // Show 84 as specified
+    }
+    
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center">
             <Icon className="h-5 w-5 text-blue-600 mr-2" />
-            {stageName} ({stageWorkflows.length})
+            {stageName} ({displayWorkflows.length})
           </h3>
         </div>
         
         <div className="space-y-3">
-          {stageWorkflows.map((workflow) => {
+          {displayWorkflows.map((workflow) => {
             const currentStep = workflow.steps.find(s => s.id === workflow.currentStep);
             const completedSteps = workflow.steps.filter(s => s.status === 'completed').length;
             const totalSteps = workflow.steps.length;
             const progress = (completedSteps / totalSteps) * 100;
+            
+            // Get corresponding trade for additional info
+            const correspondingTrade = trades.find(t => t.tradeId === workflow.tradeId);
+            const tradeStatus = correspondingTrade 
+              ? ('orderId' in correspondingTrade ? correspondingTrade.confirmationStatus : correspondingTrade.confirmationStatus)
+              : 'Unknown';
 
             return (
               <div key={workflow.tradeId} className="border rounded-lg p-3 hover:bg-gray-50">
@@ -116,11 +141,26 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
                       }`}>
                         {workflow.priority}
                       </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        tradeStatus === 'Confirmed' ? 'bg-green-100 text-green-800' :
+                        tradeStatus === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                        tradeStatus === 'Failed' ? 'bg-red-100 text-red-800' :
+                        tradeStatus === 'Settled' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {tradeStatus}
+                      </span>
                     </div>
                     
                     <p className="text-sm text-gray-600 mt-1">
                       {currentStep?.name || 'Unknown Step'}
                     </p>
+                    
+                    {correspondingTrade && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Counterparty: {correspondingTrade.counterparty}
+                      </p>
+                    )}
                     
                     <div className="mt-2">
                       <div className="w-full bg-gray-200 rounded-full h-1.5">
@@ -137,7 +177,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
             );
           })}
           
-          {stageWorkflows.length === 0 && (
+          {displayWorkflows.length === 0 && (
             <p className="text-sm text-gray-500 text-center py-4">
               No trades in {stageName.toLowerCase()} stage
             </p>
@@ -268,6 +308,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
             const tradeStatus = correspondingTrade 
               ? ('orderId' in correspondingTrade ? correspondingTrade.confirmationStatus : correspondingTrade.confirmationStatus)
               : 'Unknown';
+            const tradeType = correspondingTrade && 'orderId' in correspondingTrade ? 'Equity' : 'FX';
 
             return (
               <div key={workflow.tradeId} className="p-6 hover:bg-gray-50">
@@ -285,6 +326,11 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
                       }`}>
                         {workflow.priority}
                       </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        tradeType === 'Equity' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                      }`}>
+                        {tradeType}
+                      </span>
                     </div>
                     
                     <p className="text-sm text-gray-600 mt-1">
@@ -300,6 +346,12 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
                         'text-gray-600'
                       }`}>{tradeStatus}</span>
                     </p>
+                    
+                    {correspondingTrade && (
+                      <p className="text-sm text-gray-600">
+                        Counterparty: <span className="font-medium">{correspondingTrade.counterparty}</span>
+                      </p>
+                    )}
                     
                     <div className="mt-2">
                       <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
