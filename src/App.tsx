@@ -4,6 +4,7 @@ import Dashboard from './components/Dashboard';
 import EnhancedAnalyticsDashboard from './components/EnhancedAnalyticsDashboard';
 import TradeFiltersComponent from './components/TradeFilters';
 import TradeTable from './components/TradeTable';
+import DataUploadFilter from './components/DataUploadFilter';
 import WorkflowDashboard from './components/WorkflowDashboard';
 import WorkflowTracker from './components/WorkflowTracker';
 import EnhancedDocumentManagement from './components/EnhancedDocumentManagement';
@@ -359,6 +360,7 @@ function App() {
               { key: 'trades', label: 'Trade Confirmations' },
               { key: 'analytics', label: 'Enhanced Analytics' },
               { key: 'documents', label: 'Document Management' },
+             { key: 'data-upload', label: 'Data Upload & Filter' },
               { key: 'workflows', label: 'Workflow Management' }
             ].map(tab => (
               <button
@@ -404,6 +406,9 @@ function App() {
           />
         )}
 
+       {activeTab === 'data-upload' && (
+         <DataUploadFilter onDataImport={handleManualDataAdd} />
+       )}
 
         {activeTab === 'documents' && (
           <EnhancedDocumentManagement onDataImport={handleManualDataAdd} />
