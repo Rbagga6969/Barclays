@@ -4,7 +4,7 @@ import Dashboard from './components/Dashboard';
 import EnhancedAnalyticsDashboard from './components/EnhancedAnalyticsDashboard';
 import TradeFiltersComponent from './components/TradeFilters';
 import TradeTable from './components/TradeTable';
-import DataUploadFilter from './components/DataUploadFilter';
+
 import WorkflowDashboard from './components/WorkflowDashboard';
 import WorkflowTracker from './components/WorkflowTracker';
 import EnhancedDocumentManagement from './components/EnhancedDocumentManagement';
@@ -24,7 +24,7 @@ function App() {
   const [documentStatuses, setDocumentStatuses] = useState<Record<string, DocumentStatus>>({});
   const [selectedWorkflow, setSelectedWorkflow] = useState<TradeWorkflow | null>(null);
   const [selectedTradeForDocs, setSelectedTradeForDocs] = useState<EquityTrade | FXTrade | null>(null);
-  const [activeTab, setActiveTab] = useState<'trades' | 'workflows' | 'analytics' | 'documents' | 'data-management'>('trades');
+  const [activeTab, setActiveTab] = useState<'trades' | 'workflows' | 'analytics' | 'documents'>('trades');
   const [filters, setFilters] = useState<TradeFilters>({
     tradeType: 'all',
     status: '',
@@ -332,7 +332,7 @@ function App() {
       }));
     });
 
-    setShowOneDriveUpload(false);
+
     const message = Array.isArray(newTrade) 
       ? `${newTrade.length} trades have been successfully imported from OneDrive.`
       : `Trade ${newTrade.tradeId} has been successfully added to the system.`;
@@ -360,7 +360,6 @@ function App() {
               { key: 'trades', label: 'Trade Confirmations' },
               { key: 'analytics', label: 'Enhanced Analytics' },
               { key: 'documents', label: 'Document Management' },
-             { key: 'data-upload', label: 'Data Upload & Filter' },
               { key: 'workflows', label: 'Workflow Management' }
             ].map(tab => (
               <button
@@ -406,9 +405,7 @@ function App() {
           />
         )}
 
-       {activeTab === 'data-upload' && (
-         <DataUploadFilter onDataImport={handleManualDataAdd} />
-       )}
+
 
         {activeTab === 'documents' && (
           <EnhancedDocumentManagement onDataImport={handleManualDataAdd} />
