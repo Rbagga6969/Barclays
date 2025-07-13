@@ -57,15 +57,15 @@ export const generateEnhancedFailureAnalysis = (trade: EquityTrade | FXTrade): F
     {
       type: 'Non-Economic Break' as const,
       breakType: 'Non-Economic' as const,
-      reason: 'Missing client signature on trade confirmation',
-      solution: 'Resend documents for digital signature via DocuSign',
-      time: '1-2 hours',
-      assignedTo: 'Documentation Team',
+      reason: 'Client confirmation pending for trade details',
+      solution: 'Contact client for trade confirmation and acknowledgment',
+      time: '2-4 hours',
+      assignedTo: 'Client Services Team',
       pendingWith: 'Client' as const,
       nextActionOwner: 'Client Relationship Manager',
-      classification: 'Documentation - Signature Missing',
+      classification: 'Client Communication - Confirmation Pending',
       actionFields: {
-        nonEconomicBreak: 'Follow up with client for document execution and signature'
+        nonEconomicBreak: 'Follow up with client for trade confirmation and acknowledgment'
       }
     },
     {
@@ -219,7 +219,7 @@ export const generateEnhancedDocumentStatus = (trade: EquityTrade | FXTrade): Do
   }
 };
 
-export const generateQueueStatus = (trade: EquityTrade | FXTrade): 'Matching' | 'Drafting' | 'Pending Approval' | 'CCNR' => {
+export const generateQueueStatus = (trade: EquityTrade | FXTrade): 'Matching' | 'Drafting' | 'Pending Client Confirmation' | 'CCNR' => {
   const isEquityTrade = 'orderId' in trade;
   const status = isEquityTrade ? trade.confirmationStatus : trade.confirmationStatus;
   
@@ -230,27 +230,27 @@ export const generateQueueStatus = (trade: EquityTrade | FXTrade): 'Matching' | 
     case 'Pending':
       if (random < 0.3) return 'Matching';
       if (random < 0.6) return 'Drafting';
-      return 'Pending Approval';
+      return 'Pending Client Confirmation';
     case 'Failed':
     case 'Disputed':
       if (random < 0.2) return 'Matching';
       if (random < 0.5) return 'Drafting';
-      return 'Pending Approval';
+      return 'Pending Client Confirmation';
     case 'Confirmed':
       if (random < 0.1) return 'Matching';
       if (random < 0.3) return 'Drafting';
-      if (random < 0.7) return 'Pending Approval';
+      if (random < 0.7) return 'Pending Client Confirmation';
       return 'CCNR';
     case 'Settled':
       return 'CCNR';
     case 'Booked':
       if (random < 0.4) return 'Matching';
       if (random < 0.7) return 'Drafting';
-      return 'Pending Approval';
+      return 'Pending Client Confirmation';
     default:
       if (random < 0.25) return 'Matching';
       if (random < 0.5) return 'Drafting';
-      if (random < 0.75) return 'Pending Approval';
+      if (random < 0.75) return 'Pending Client Confirmation';
       return 'CCNR';
   }
 };

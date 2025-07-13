@@ -28,13 +28,13 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
   // Categorize workflows by stage
   const workflowsByStage = useMemo(() => {
     const stages = {
-      drafting: workflows.filter(w => 
-        w.steps.some(s => s.id.includes('drafting') && s.status === 'in-progress')
-      ),
       matching: workflows.filter(w => 
         w.steps.some(s => s.id.includes('affirmation') && s.status === 'in-progress')
       ),
-      pendingApprovals: workflows.filter(w => 
+      drafting: workflows.filter(w => 
+        w.steps.some(s => s.id.includes('drafting') && s.status === 'in-progress')
+      ),
+      pendingClientConfirmation: workflows.filter(w => 
         w.steps.some(s => s.status === 'requires-action')
       ),
       ccnr: workflows.filter(w => 
@@ -47,13 +47,13 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
 
   const stats = useMemo(() => {
     const total = workflows.length;
-    const drafting = 67; // Fixed value as requested
     const matching = 133; // Fixed value as requested  
-    const pendingApprovals = 116; // Fixed value as requested
+    const drafting = 67; // Fixed value as requested
+    const pendingClientConfirmation = 116; // Fixed value as requested
     const ccnr = 84; // Calculated: 400 - 67 - 133 - 116 = 84
     const overdue = actions.filter(a => a.status === 'overdue').length;
 
-    return { total, drafting, matching, pendingApprovals, ccnr, overdue };
+    return { total, matching, drafting, pendingClientConfirmation, ccnr, overdue };
   }, [workflows, actions, workflowsByStage]);
 
   const filteredWorkflows = useMemo(() => {
@@ -203,16 +203,6 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
 
         <div className="bg-white rounded-lg shadow-md p-4">
           <div className="flex items-center">
-            <FileText className="h-8 w-8 text-purple-600" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">Drafting</p>
-              <p className="text-2xl font-bold text-gray-900">67</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="flex items-center">
             <Users className="h-8 w-8 text-yellow-600" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600">Matching</p>
@@ -223,9 +213,19 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
 
         <div className="bg-white rounded-lg shadow-md p-4">
           <div className="flex items-center">
-            <AlertTriangle className="h-8 w-8 text-orange-600" />
+            <FileText className="h-8 w-8 text-purple-600" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">Pending Approvals</p>
+              <p className="text-sm font-medium text-gray-600">Drafting</p>
+              <p className="text-2xl font-bold text-gray-900">67</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="flex items-center">
+            <UserCheck className="h-8 w-8 text-orange-600" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Pending Client Confirmation</p>
               <p className="text-2xl font-bold text-gray-900">116</p>
             </div>
           </div>
@@ -244,9 +244,9 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
 
       {/* Workflow Stages */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {renderStageSection('Drafting', workflowsByStage.drafting, FileText)}
         {renderStageSection('Matching', workflowsByStage.matching, Users)}
-        {renderStageSection('Pending Approvals', workflowsByStage.pendingApprovals, AlertTriangle)}
+        {renderStageSection('Drafting', workflowsByStage.drafting, FileText)}
+        {renderStageSection('Pending Client Confirmation', workflowsByStage.pendingClientConfirmation, UserCheck)}
         {renderStageSection('CCNR (Complete)', workflowsByStage.ccnr, CheckCircle)}
       </div>
 

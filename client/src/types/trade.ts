@@ -23,7 +23,7 @@ export interface EquityTrade {
   pendingWith?: 'Legal' | 'Middle Office' | 'Client' | 'Front Office' | 'Trading Sales';
   nextActionOwner?: string;
   breakClassification?: string;
-  queueStatus?: 'Drafting' | 'Matching' | 'Pending Approval' | 'CCNR';
+  queueStatus?: 'Matching' | 'Drafting' | 'Pending Client Confirmation' | 'CCNR';
   sentToSettlements?: boolean;
   settlementsSentAt?: string;
 }
@@ -56,7 +56,7 @@ export interface FXTrade {
   pendingWith?: 'Legal' | 'Middle Office' | 'Client' | 'Front Office' | 'Trading Sales';
   nextActionOwner?: string;
   breakClassification?: string;
-  queueStatus?: 'Drafting' | 'Matching' | 'Pending Approval' | 'CCNR';
+  queueStatus?: 'Matching' | 'Drafting' | 'Pending Client Confirmation' | 'CCNR';
   sentToSettlements?: boolean;
   settlementsSentAt?: string;
 }

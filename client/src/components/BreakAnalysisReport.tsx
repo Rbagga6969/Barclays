@@ -43,7 +43,7 @@ const BreakAnalysisReport: React.FC<BreakAnalysisReportProps> = ({ failures, onR
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Open':
-        return <AlertTriangle className="w-4 h-4 text-red-500" />;
+        return <AlertTriangle className="w-4 h-4 text-purple-500" />;
       case 'In Progress':
         return <Clock className="w-4 h-4 text-yellow-500" />;
       case 'Resolved':
@@ -57,7 +57,7 @@ const BreakAnalysisReport: React.FC<BreakAnalysisReportProps> = ({ failures, onR
 
   const getImpactBadge = (impact: string) => {
     const colors = {
-      Critical: 'bg-red-100 text-red-800 border-red-200',
+      Critical: 'bg-purple-100 text-purple-800 border-purple-200',
       High: 'bg-orange-100 text-orange-800 border-orange-200',
       Medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
       Low: 'bg-green-100 text-green-800 border-green-200'
@@ -73,7 +73,7 @@ const BreakAnalysisReport: React.FC<BreakAnalysisReportProps> = ({ failures, onR
 
   const getStatusBadge = (status: string) => {
     const colors = {
-      'Open': 'bg-red-100 text-red-800 border-red-200',
+      'Open': 'bg-purple-100 text-purple-800 border-purple-200',
       'In Progress': 'bg-yellow-100 text-yellow-800 border-yellow-200',
       'Resolved': 'bg-green-100 text-green-800 border-green-200',
       'Escalated': 'bg-orange-100 text-orange-800 border-orange-200'
@@ -125,13 +125,13 @@ const BreakAnalysisReport: React.FC<BreakAnalysisReportProps> = ({ failures, onR
               <TrendingUp className="w-5 h-5 text-gray-400" />
             </div>
           </div>
-          <div className="bg-red-50 rounded-lg p-4">
+          <div className="bg-purple-50 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-red-600">Open</p>
-                <p className="text-2xl font-bold text-red-900">{stats.open}</p>
+                <p className="text-sm text-purple-600">Open</p>
+                <p className="text-2xl font-bold text-purple-900">{stats.open}</p>
               </div>
-              <AlertTriangle className="w-5 h-5 text-red-400" />
+              <AlertTriangle className="w-5 h-5 text-purple-400" />
             </div>
           </div>
           <div className="bg-yellow-50 rounded-lg p-4">

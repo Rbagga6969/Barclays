@@ -114,7 +114,7 @@ const TradeDocumentStatus: React.FC<TradeDocumentStatusProps> = ({
       } else if (doc.submitted) {
         return <Clock className="w-5 h-5 text-yellow-500" />;
       } else {
-        return <XCircle className="w-5 h-5 text-red-500" />;
+        return <XCircle className="w-5 h-5 text-purple-500" />;
       }
     };
 
@@ -124,7 +124,7 @@ const TradeDocumentStatus: React.FC<TradeDocumentStatusProps> = ({
         'Pending': 'bg-yellow-100 text-yellow-800',
         'Created': 'bg-blue-100 text-blue-800',
         'Reviewed': 'bg-purple-100 text-purple-800',
-        'Rejected': 'bg-red-100 text-red-800',
+        'Rejected': 'bg-purple-100 text-purple-800',
         'In Review': 'bg-orange-100 text-orange-800'
       };
       
@@ -145,12 +145,7 @@ const TradeDocumentStatus: React.FC<TradeDocumentStatusProps> = ({
             </h4>
           </div>
           <div className="flex items-center space-x-2">
-            <button className="text-blue-600 hover:text-blue-800">
-              <Eye className="w-4 h-4" />
-            </button>
-            <button className="text-green-600 hover:text-green-800">
-              <Download className="w-4 h-4" />
-            </button>
+            <span className="text-sm text-gray-500">Document Status</span>
           </div>
         </div>
         
@@ -344,7 +339,7 @@ const TradeDocumentStatus: React.FC<TradeDocumentStatusProps> = ({
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                   selectedTrade.confirmationStatus === 'Confirmed' ? 'bg-green-100 text-green-800' :
                   selectedTrade.confirmationStatus === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
+                  'bg-purple-100 text-purple-800'
                 }`}>
                   {selectedTrade.confirmationStatus}
                 </span>

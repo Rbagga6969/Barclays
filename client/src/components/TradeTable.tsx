@@ -314,7 +314,7 @@ startxref
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {trade.tradeId}
                     {trade.failureReason && (
-                      <div className="text-xs text-red-600 mt-1" title={trade.failureReason}>
+                      <div className="text-xs text-purple-600 mt-1" title={trade.failureReason}>
                         <AlertTriangle className="h-3 w-3 inline mr-1" />
                         Issue Detected
                       </div>
@@ -367,7 +367,7 @@ startxref
                       <div>
                         <div className="flex items-center space-x-2">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            tradeFailure.breakType === 'Economic' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
+                            tradeFailure.breakType === 'Economic' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'
                           }`}>
                             {tradeFailure.breakType}
                           </span>
@@ -389,24 +389,26 @@ startxref
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleViewConfirmation(trade)}
-                        className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                      >
-                        <Eye className="h-3 w-3 mr-1" />
-                        View
-                      </button>
-                      <button
-                        onClick={() => handleDownloadPDF(trade)}
-                        className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-                      >
-                        <Download className="h-3 w-3 mr-1" />
-                        PDF
-                      </button>
+                      <div className="relative">
+                        <button
+                          onClick={() => handleViewConfirmation(trade)}
+                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          View
+                        </button>
+                        <button
+                          onClick={() => handleDownloadPDF(trade)}
+                          className="absolute top-0 right-0 -mt-1 -mr-1 inline-flex items-center px-1 py-1 border border-transparent text-xs font-medium rounded-full text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                          title="Download PDF"
+                        >
+                          <Download className="h-3 w-3" />
+                        </button>
+                      </div>
                       {tradeFailure && (
                         <button
                           onClick={() => handleViewBreakDetails(trade.tradeId)}
-                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
                         >
                           <ExternalLink className="h-3 w-3 mr-1" />
                           Break Details
@@ -452,7 +454,7 @@ startxref
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Break Type</label>
                     <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedFailure.breakType === 'Economic' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
+                      selectedFailure.breakType === 'Economic' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'
                     }`}>
                       {selectedFailure.breakType} Break
                     </span>
