@@ -219,22 +219,39 @@ export const generateEnhancedDocumentStatus = (trade: EquityTrade | FXTrade): Do
   }
 };
 
-export const generateQueueStatus = (trade: EquityTrade | FXTrade): 'Drafting' | 'Matching' | 'Pending Approval' | 'CCNR' => {
+export const generateQueueStatus = (trade: EquityTrade | FXTrade): 'Matching' | 'Drafting' | 'Pending Approval' | 'CCNR' => {
   const isEquityTrade = 'orderId' in trade;
   const status = isEquityTrade ? trade.confirmationStatus : trade.confirmationStatus;
   
+  // Create a consistent distribution across all stages
+  const random = Math.random();
+  
   switch (status) {
     case 'Pending':
-      return Math.random() > 0.5 ? 'Drafting' : 'Matching';
+      if (random < 0.3) return 'Matching';
+      if (random < 0.6) return 'Drafting';
+      return 'Pending Approval';
     case 'Failed':
     case 'Disputed':
+      if (random < 0.2) return 'Matching';
+      if (random < 0.5) return 'Drafting';
       return 'Pending Approval';
     case 'Confirmed':
-      return 'Pending Approval';
+      if (random < 0.1) return 'Matching';
+      if (random < 0.3) return 'Drafting';
+      if (random < 0.7) return 'Pending Approval';
+      return 'CCNR';
     case 'Settled':
       return 'CCNR';
+    case 'Booked':
+      if (random < 0.4) return 'Matching';
+      if (random < 0.7) return 'Drafting';
+      return 'Pending Approval';
     default:
-      return 'Drafting';
+      if (random < 0.25) return 'Matching';
+      if (random < 0.5) return 'Drafting';
+      if (random < 0.75) return 'Pending Approval';
+      return 'CCNR';
   }
 };
 

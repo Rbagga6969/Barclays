@@ -8,6 +8,7 @@ import TradeTable from './components/TradeTable';
 import WorkflowDashboard from './components/WorkflowDashboard';
 import WorkflowTracker from './components/WorkflowTracker';
 import TradeDocumentStatus from './components/TradeDocumentStatus';
+import BreakAnalysisReport from './components/BreakAnalysisReport';
 import { EquityTrade, FXTrade, TradeFilters, FailureAnalysis, DocumentStatus } from './types/trade';
 import { TradeWorkflow, WorkflowAction } from './types/workflow';
 import { parseEquityCSV, parseFXCSV } from './utils/csvParser';
@@ -393,6 +394,13 @@ function App() {
               onSelectTradeForDocs={setSelectedTradeForDocs}
               failures={failures}
             />
+            <div className="mt-8">
+              <BreakAnalysisReport 
+                failures={failures}
+                onResolve={handleFailureResolve}
+                onEscalate={(tradeId) => console.log('Escalate:', tradeId)}
+              />
+            </div>
           </>
         )}
 

@@ -297,9 +297,7 @@ startxref
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Break Details
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Risk Level
-                </th>
+
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Trade Date
                 </th>
@@ -385,13 +383,7 @@ startxref
                       <span className="text-gray-400">No breaks</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {trade.riskLevel && (
-                      <span className={getRiskBadge(trade.riskLevel)}>
-                        {trade.riskLevel}
-                      </span>
-                    )}
-                  </td>
+
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {trade.tradeDate}
                   </td>
