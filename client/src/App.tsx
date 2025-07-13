@@ -7,7 +7,7 @@ import TradeTable from './components/TradeTable';
 
 import WorkflowDashboard from './components/WorkflowDashboard';
 import WorkflowTracker from './components/WorkflowTracker';
-import EnhancedDocumentManagement from './components/EnhancedDocumentManagement';
+import TradeDocumentStatus from './components/TradeDocumentStatus';
 import { EquityTrade, FXTrade, TradeFilters, FailureAnalysis, DocumentStatus } from './types/trade';
 import { TradeWorkflow, WorkflowAction } from './types/workflow';
 import { parseEquityCSV, parseFXCSV } from './utils/csvParser';
@@ -408,7 +408,12 @@ function App() {
 
 
         {activeTab === 'documents' && (
-          <EnhancedDocumentManagement onDataImport={handleManualDataAdd} />
+          <TradeDocumentStatus 
+            equityTrades={equityTrades}
+            fxTrades={fxTrades}
+            documentStatuses={documentStatuses}
+            onDocumentUpdate={handleDocumentUpdate}
+          />
         )}
 
         {activeTab === 'workflows' && (
