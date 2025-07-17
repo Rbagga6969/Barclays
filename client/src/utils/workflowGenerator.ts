@@ -156,7 +156,8 @@ export const generateWorkflowActions = (workflows: TradeWorkflow[]): WorkflowAct
   const actions: WorkflowAction[] = [];
   
   workflows.forEach(workflow => {
-    workflow.steps.forEach(step => {
+    if (workflow.steps) {
+      workflow.steps.forEach(step => {
       if (step.status === 'requires-action') {
         actions.push({
           id: `${workflow.tradeId}-${step.id}`,
@@ -178,7 +179,8 @@ export const generateWorkflowActions = (workflows: TradeWorkflow[]): WorkflowAct
           status: 'pending'
         });
       }
-    });
+      });
+    }
   });
   
   return actions;

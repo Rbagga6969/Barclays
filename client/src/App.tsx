@@ -44,10 +44,9 @@ function App() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load equity trades
-        const equityResponse = await fetch('/data/equity_trade_lifecycle_dataset.csv');
-        const equityText = await equityResponse.text();
-        const parsedEquityTrades = parseEquityCSV(equityText);
+        // Load equity trades from database
+        const equityResponse = await fetch('/api/trades/equity');
+        const parsedEquityTrades = await equityResponse.json();
         
         // Enhance equity trades with additional data
         const enhancedEquityTrades = parsedEquityTrades.map(trade => {
@@ -63,10 +62,9 @@ function App() {
         
         setEquityTrades(enhancedEquityTrades);
 
-        // Load FX trades
-        const fxResponse = await fetch('/data/fx_trade_lifecycle_full_dataset.csv');
-        const fxText = await fxResponse.text();
-        const parsedFxTrades = parseFXCSV(fxText);
+        // Load FX trades from database
+        const fxResponse = await fetch('/api/trades/fx');
+        const parsedFxTrades = await fxResponse.json();
         
         // Enhance FX trades with additional data
         const enhancedFxTrades = parsedFxTrades.map(trade => {
@@ -82,27 +80,30 @@ function App() {
         
         setFxTrades(enhancedFxTrades);
 
-        // Generate workflows for all trades
-        const allTrades = [...enhancedEquityTrades, ...enhancedFxTrades];
-        const generatedWorkflows = allTrades.map(generateWorkflowForTrade);
-        setWorkflows(generatedWorkflows);
+        // Load workflows from database
+        const workflowsResponse = await fetch('/api/workflows');
+        const workflowsData = await workflowsResponse.json();
+        setWorkflows(workflowsData);
 
-        // Generate workflow actions
-        const actions = generateWorkflowActions(generatedWorkflows);
+        // Generate workflow actions from database workflows
+        const actions = generateWorkflowActions(workflowsData);
         setWorkflowActions(actions);
 
         // Generate failure analyses
+        const allTrades = [...enhancedEquityTrades, ...enhancedFxTrades];
         const failureAnalyses = allTrades
           .map(generateEnhancedFailureAnalysis)
           .filter(Boolean) as FailureAnalysis[];
         setFailures(failureAnalyses);
 
-        // Generate document statuses
-        const docStatuses = allTrades.reduce((acc, trade) => {
-          acc[trade.tradeId] = generateEnhancedDocumentStatus(trade);
-          return acc;
-        }, {} as Record<string, DocumentStatus>);
-        setDocumentStatuses(docStatuses);
+        // Generate document statuses for all trades
+        allTrades.forEach(trade => {
+          const docStatus = generateEnhancedDocumentStatus(trade);
+          setDocumentStatuses(prev => ({
+            ...prev,
+            [trade.tradeId]: docStatus
+          }));
+        });
 
       } catch (error) {
         console.error('Error loading trade data:', error);
