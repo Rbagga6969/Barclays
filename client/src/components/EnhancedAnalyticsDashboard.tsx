@@ -193,11 +193,11 @@ const EnhancedAnalyticsDashboard: React.FC<EnhancedAnalyticsDashboardProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Economic Breaks</p>
-              <p className="text-2xl font-bold text-red-600">
+              <p className="text-2xl font-bold" style={{ color: 'var(--mocha-dark)' }}>
                 {breakTypeData.find(d => d.name === 'Economic')?.value || 0}
               </p>
             </div>
-            <AlertTriangle className="h-8 w-8 text-red-600" />
+            <AlertTriangle className="h-8 w-8" style={{ color: 'var(--mocha)' }} />
           </div>
           <p className="text-xs text-gray-500 mt-2">Requires immediate attention</p>
         </div>

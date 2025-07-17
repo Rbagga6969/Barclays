@@ -34,19 +34,323 @@ const TradeConfirmationModal: React.FC<TradeConfirmationModalProps> = ({
   });
 
   const handleDownloadPDF = () => {
-    // Simulate PDF generation and download
-    const tradeData = {
-      tradeId: trade.tradeId,
-      counterparty: trade.counterparty,
-      tradeDate: trade.tradeDate,
-      status: isEquityTrade(trade) ? trade.confirmationStatus : trade.confirmationStatus,
-      value: isEquityTrade(trade) ? trade.tradeValue : 'FX Trade',
-      currency: isEquityTrade(trade) ? trade.currency : trade.baseCurrency + '/' + trade.termCurrency
-    };
+    const currentDate = new Date().toLocaleDateString();
+    const currentTime = new Date().toLocaleTimeString();
+    
+    const printWindow = window.open('', '_blank');
+    
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Trade Confirmation - ${trade.tradeId}</title>
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { 
+                font-family: 'Arial', sans-serif; 
+                line-height: 1.6; 
+                color: #333; 
+                background: #fff;
+                margin: 20px;
+              }
+              .document-header {
+                background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+                color: white;
+                padding: 30px;
+                text-align: center;
+                border-radius: 10px 10px 0 0;
+                margin-bottom: 0;
+              }
+              .document-header h1 {
+                font-size: 28px;
+                font-weight: bold;
+                margin-bottom: 10px;
+                letter-spacing: 1px;
+              }
+              .document-header p {
+                font-size: 16px;
+                opacity: 0.9;
+              }
+              .content-wrapper {
+                border: 2px solid #e5e7eb;
+                border-radius: 0 0 10px 10px;
+                overflow: hidden;
+              }
+              .trade-details {
+                padding: 30px;
+                background: #f8fafc;
+              }
+              .detail-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+                margin-bottom: 25px;
+              }
+              .detail-item {
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                border-left: 4px solid #3b82f6;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+              }
+              .detail-label {
+                font-weight: bold;
+                color: #374151;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 5px;
+              }
+              .detail-value {
+                font-size: 16px;
+                color: #111827;
+                font-weight: 600;
+              }
+              .status-badge {
+                display: inline-block;
+                padding: 6px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+              }
+              .status-confirmed { background: #d1fae5; color: #065f46; }
+              .status-pending { background: #fef3c7; color: #92400e; }
+              .status-failed { background: #fed7d7; color: #c53030; }
+              .legal-section {
+                background: #f1f5f9;
+                padding: 25px;
+                border-top: 1px solid #e5e7eb;
+              }
+              .legal-title {
+                font-size: 14px;
+                font-weight: bold;
+                color: #1f2937;
+                margin-bottom: 15px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+              }
+              .legal-text {
+                font-size: 11px;
+                color: #4b5563;
+                margin-bottom: 12px;
+                line-height: 1.5;
+              }
+              .signature-section {
+                background: white;
+                padding: 30px;
+                border-top: 2px solid #e5e7eb;
+              }
+              .signature-title {
+                font-size: 18px;
+                font-weight: bold;
+                color: #1f2937;
+                margin-bottom: 25px;
+                text-align: center;
+              }
+              .signature-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 40px;
+              }
+              .signature-box {
+                border: 2px solid #d1d5db;
+                border-radius: 8px;
+                padding: 20px;
+                text-align: center;
+                background: #fafafa;
+              }
+              .signature-label {
+                font-weight: bold;
+                color: #374151;
+                margin-bottom: 15px;
+                font-size: 14px;
+              }
+              .signature-line {
+                border-bottom: 2px solid #6b7280;
+                height: 60px;
+                margin-bottom: 15px;
+                position: relative;
+              }
+              .signature-line::after {
+                content: "Signature";
+                position: absolute;
+                bottom: -20px;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 10px;
+                color: #9ca3af;
+              }
+              .date-line {
+                border-bottom: 1px solid #6b7280;
+                width: 120px;
+                margin: 10px auto;
+                height: 20px;
+                position: relative;
+              }
+              .date-line::after {
+                content: "Date";
+                position: absolute;
+                bottom: -20px;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 10px;
+                color: #9ca3af;
+              }
+              .footer-info {
+                background: #1f2937;
+                color: white;
+                padding: 20px;
+                text-align: center;
+                border-radius: 0 0 10px 10px;
+              }
+              .footer-info p {
+                font-size: 12px;
+                margin-bottom: 5px;
+              }
+              .footer-info .ref-number {
+                font-weight: bold;
+                color: #60a5fa;
+              }
+              @media print { 
+                .no-print { display: none; } 
+                body { margin: 0; }
+                .document-header { border-radius: 0; }
+                .content-wrapper { border-radius: 0; }
+                .footer-info { border-radius: 0; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="document-header">
+              <h1>TRADE CONFIRMATION</h1>
+              <p>Official Transaction Record - Barclays Bank PLC</p>
+            </div>
+            
+            <div class="content-wrapper">
+              <div class="trade-details">
+                <div class="detail-grid">
+                  <div class="detail-item">
+                    <div class="detail-label">Trade ID</div>
+                    <div class="detail-value">${trade.tradeId}</div>
+                  </div>
+                  <div class="detail-item">
+                    <div class="detail-label">Status</div>
+                    <div class="detail-value">
+                      <span class="status-badge status-${isEquityTrade(trade) ? trade.confirmationStatus.toLowerCase() : trade.confirmationStatus.toLowerCase()}">${isEquityTrade(trade) ? trade.confirmationStatus : trade.confirmationStatus}</span>
+                    </div>
+                  </div>
+                  <div class="detail-item">
+                    <div class="detail-label">Trade Date</div>
+                    <div class="detail-value">${trade.tradeDate}</div>
+                  </div>
+                  <div class="detail-item">
+                    <div class="detail-label">Settlement Date</div>
+                    <div class="detail-value">${trade.settlementDate}</div>
+                  </div>
+                  <div class="detail-item">
+                    <div class="detail-label">Counterparty</div>
+                    <div class="detail-value">${trade.counterparty}</div>
+                  </div>
+                  <div class="detail-item">
+                    <div class="detail-label">Trade Time</div>
+                    <div class="detail-value">${trade.tradeTime}</div>
+                  </div>
+                  ${isEquityTrade(trade) ? `
+                    <div class="detail-item">
+                      <div class="detail-label">Security</div>
+                      <div class="detail-value">${trade.security}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Quantity</div>
+                      <div class="detail-value">${trade.quantity.toLocaleString()}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Price</div>
+                      <div class="detail-value">$${trade.price.toFixed(2)}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Trade Value</div>
+                      <div class="detail-value">$${trade.tradeValue.toLocaleString()}</div>
+                    </div>
+                  ` : `
+                    <div class="detail-item">
+                      <div class="detail-label">Currency Pair</div>
+                      <div class="detail-value">${trade.currencyPair}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Transaction Type</div>
+                      <div class="detail-value">${trade.transactionType}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Base Currency</div>
+                      <div class="detail-value">${trade.baseCurrency}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Quote Currency</div>
+                      <div class="detail-value">${trade.quoteCurrency}</div>
+                    </div>
+                  `}
+                </div>
+              </div>
 
-    // In a real application, this would generate and download a PDF
-    console.log('Generating PDF for trade:', tradeData);
-    alert(`PDF confirmation for trade ${trade.tradeId} has been generated and downloaded successfully.`);
+              <div class="legal-section">
+                <div class="legal-title">Important Legal Notice</div>
+                <p class="legal-text">
+                  This confirmation is issued in accordance with the terms and conditions governing 
+                  trading relationships between Barclays Bank PLC and the counterparty. This document 
+                  constitutes a legally binding confirmation of the trade details specified herein.
+                </p>
+                <p class="legal-text">
+                  Any discrepancies must be reported immediately to the Trade Confirmation Department. 
+                  Failure to object within 24 hours of receipt shall constitute acceptance of all terms.
+                </p>
+                <p class="legal-text">
+                  This trade is subject to the standard terms and conditions of Barclays Bank PLC and 
+                  applicable regulatory requirements including but not limited to MiFID II, EMIR, and 
+                  relevant local regulations.
+                </p>
+              </div>
+
+              <div class="signature-section">
+                <div class="signature-title">Required Signatures</div>
+                <div class="signature-grid">
+                  <div class="signature-box">
+                    <div class="signature-label">Client Authorization</div>
+                    <div class="signature-line"></div>
+                    <div class="date-line"></div>
+                    <p style="font-size: 11px; color: #6b7280; margin-top: 25px;">
+                      By signing above, the client confirms receipt and acceptance of this trade confirmation.
+                    </p>
+                  </div>
+                  <div class="signature-box">
+                    <div class="signature-label">Bank Representative</div>
+                    <div class="signature-line"></div>
+                    <div class="date-line"></div>
+                    <p style="font-size: 11px; color: #6b7280; margin-top: 25px;">
+                      Authorized representative of Barclays Bank PLC Trade Confirmation Department.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="footer-info">
+              <p>Document Generated: ${currentDate} at ${currentTime}</p>
+              <p class="ref-number">Reference: ${trade.tradeId}-CONF-${Date.now()}</p>
+              <p>Barclays Bank PLC • Trade Confirmation Department • London, UK</p>
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      
+      // Wait for content to load then print
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    }
   };
 
   return (
@@ -317,7 +621,15 @@ const TradeConfirmationModal: React.FC<TradeConfirmationModalProps> = ({
           <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
             <button
               type="button"
-              className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:w-auto sm:text-sm"
+              onClick={handleDownloadPDF}
+              className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download PDF
+            </button>
+            <button
+              type="button"
+              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
               onClick={onClose}
             >
               Close

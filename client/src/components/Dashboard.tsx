@@ -64,8 +64,8 @@ const Dashboard: React.FC<DashboardProps> = ({ equityTrades, fxTrades }) => {
       name: 'Failed/Disputed',
       value: (statusCounts.failed + statusCounts.disputed).toLocaleString(),
       icon: AlertTriangle,
-      color: 'text-red-600',
-      bgColor: 'bg-red-100'
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100'
     }
   ];
 

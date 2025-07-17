@@ -19,7 +19,7 @@ const FailureAnalysisPanel: React.FC<FailureAnalysisPanelProps> = ({ failures, o
 
   const getImpactColor = (impact: string) => {
     switch (impact) {
-      case 'Critical': return 'text-red-600 bg-red-100';
+      case 'Critical': return 'text-orange-600 bg-orange-100';
       case 'High': return 'text-orange-600 bg-orange-100';
       case 'Medium': return 'text-yellow-600 bg-yellow-100';
       case 'Low': return 'text-green-600 bg-green-100';
@@ -29,7 +29,7 @@ const FailureAnalysisPanel: React.FC<FailureAnalysisPanelProps> = ({ failures, o
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'Open': return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      case 'Open': return <AlertTriangle className="h-4 w-4" style={{ color: 'var(--mocha)' }} />;
       case 'In Progress': return <Clock className="h-4 w-4 text-yellow-500" />;
       case 'Resolved': return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'Escalated': return <XCircle className="h-4 w-4 text-orange-500" />;
