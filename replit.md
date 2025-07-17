@@ -21,7 +21,7 @@ Preferred communication style: Simple, everyday language.
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js
 - **Language**: TypeScript with ES modules
-- **Database**: PostgreSQL with Drizzle ORM (fully integrated with 399 trades migrated)
+- **Database**: PostgreSQL with Drizzle ORM (fully integrated with 399 trades migrated, reduced from 500 to 400 as requested)
 - **Session Management**: connect-pg-simple for PostgreSQL session store
 - **Development**: Hot reload with Vite middleware integration
 - **Data Storage**: Database-backed storage replaced in-memory storage
@@ -57,6 +57,7 @@ Preferred communication style: Simple, everyday language.
 - **Status Tracking**: Document submission, client signatures, bank signatures
 - **Template Management**: Configurable document templates and fields
 - **Integration**: Cloud storage connectivity (OneDrive simulation)
+- **Enhanced Trade Confirmations**: All trade details from Excel files now included in confirmations (Order ID, Client ID, Trading Venue, Country of Trade, Operations Notes for equity trades; Trader ID, Product Type, Confirmation Method, Amendment Flag, Value Date, Maturity Date, Confirmation Timestamp for FX trades)
 
 ## Data Flow
 

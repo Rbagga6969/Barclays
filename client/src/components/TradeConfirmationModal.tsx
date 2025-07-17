@@ -259,8 +259,20 @@ const TradeConfirmationModal: React.FC<TradeConfirmationModalProps> = ({
                   </div>
                   ${isEquityTrade(trade) ? `
                     <div class="detail-item">
+                      <div class="detail-label">Order ID</div>
+                      <div class="detail-value">${trade.orderId}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Client ID</div>
+                      <div class="detail-value">${trade.clientId || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
                       <div class="detail-label">Security</div>
                       <div class="detail-value">${trade.security}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Side</div>
+                      <div class="detail-value">${trade.side}</div>
                     </div>
                     <div class="detail-item">
                       <div class="detail-label">Quantity</div>
@@ -273,6 +285,26 @@ const TradeConfirmationModal: React.FC<TradeConfirmationModalProps> = ({
                     <div class="detail-item">
                       <div class="detail-label">Trade Value</div>
                       <div class="detail-value">$${trade.tradeValue.toLocaleString()}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Currency</div>
+                      <div class="detail-value">${trade.currency}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Trading Venue</div>
+                      <div class="detail-value">${trade.tradingVenue || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Trader</div>
+                      <div class="detail-value">${trade.trader}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Country of Trade</div>
+                      <div class="detail-value">${trade.countryOfTrade || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Operations Notes</div>
+                      <div class="detail-value">${trade.opsTeamNotes || 'N/A'}</div>
                     </div>
                   ` : `
                     <div class="detail-item">
@@ -290,6 +322,46 @@ const TradeConfirmationModal: React.FC<TradeConfirmationModalProps> = ({
                     <div class="detail-item">
                       <div class="detail-label">Quote Currency</div>
                       <div class="detail-value">${trade.quoteCurrency}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Term Currency</div>
+                      <div class="detail-value">${trade.termCurrency || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Dealt Currency</div>
+                      <div class="detail-value">${trade.dealtCurrency || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Trader ID</div>
+                      <div class="detail-value">${trade.traderId || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Value Date</div>
+                      <div class="detail-value">${trade.valueDate || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Trade Status</div>
+                      <div class="detail-value">${trade.tradeStatus || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Product Type</div>
+                      <div class="detail-value">${trade.productType || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Maturity Date</div>
+                      <div class="detail-value">${trade.maturityDate || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Confirmation Method</div>
+                      <div class="detail-value">${trade.confirmationMethod || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Amendment Flag</div>
+                      <div class="detail-value">${trade.amendmentFlag || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                      <div class="detail-label">Confirmation Timestamp</div>
+                      <div class="detail-value">${trade.confirmationTimestamp || 'N/A'}</div>
                     </div>
                   `}
                 </div>
