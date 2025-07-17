@@ -8,4 +8,60 @@
   --mocha-dark: #8b6f5a;
   --mocha-bg: #f5f2ee;
   --mocha-border: #d4c4b0;
+  --mocha-accent: #b8956a;
+  --mocha-hover: #9a7b62;
+  --mocha-text: #6d5a48;
+  --mocha-success: #8fbc8f;
+  --mocha-warning: #daa520;
+  --mocha-error: #cd853f;
 }
+
+/* Replace red colors with mocha throughout the system */
+.text-red-600 { color: var(--mocha) !important; }
+.text-red-700 { color: var(--mocha-dark) !important; }
+.text-red-800 { color: var(--mocha-text) !important; }
+.text-red-500 { color: var(--mocha-light) !important; }
+
+.bg-red-600 { background-color: var(--mocha) !important; }
+.bg-red-700 { background-color: var(--mocha-dark) !important; }
+.bg-red-50 { background-color: var(--mocha-bg) !important; }
+.bg-red-100 { background-color: var(--mocha-bg) !important; }
+
+.border-red-600 { border-color: var(--mocha) !important; }
+.border-red-500 { border-color: var(--mocha-light) !important; }
+.border-red-300 { border-color: var(--mocha-border) !important; }
+
+.hover\:bg-red-700:hover { background-color: var(--mocha-hover) !important; }
+.hover\:text-red-700:hover { color: var(--mocha-hover) !important; }
+
+.focus\:ring-red-500:focus { --tw-ring-color: var(--mocha-accent) !important; }
+.focus\:border-red-500:focus { border-color: var(--mocha-accent) !important; }
+
+/* Status colors with mocha theme */
+.status-confirmed { background: var(--mocha-success); color: #2d5016; }
+.status-pending { background: var(--mocha-warning); color: #8b4513; }
+.status-failed { background: var(--mocha-error); color: #654321; }
+.status-settled { background: var(--mocha-success); color: #2d5016; }
+
+/* Replace blue colors with mocha throughout the system */
+.text-blue-600 { color: var(--mocha) !important; }
+.text-blue-700 { color: var(--mocha-dark) !important; }
+.text-blue-800 { color: var(--mocha-text) !important; }
+.text-blue-500 { color: var(--mocha-light) !important; }
+.text-blue-400 { color: var(--mocha-accent) !important; }
+.text-blue-900 { color: var(--mocha-text) !important; }
+
+.bg-blue-600 { background-color: var(--mocha) !important; }
+.bg-blue-700 { background-color: var(--mocha-dark) !important; }
+.bg-blue-50 { background-color: var(--mocha-bg) !important; }
+.bg-blue-100 { background-color: var(--mocha-bg) !important; }
+
+.border-blue-600 { border-color: var(--mocha) !important; }
+.border-blue-500 { border-color: var(--mocha-light) !important; }
+.border-blue-300 { border-color: var(--mocha-border) !important; }
+
+.hover\:bg-blue-700:hover { background-color: var(--mocha-hover) !important; }
+.hover\:text-blue-700:hover { color: var(--mocha-hover) !important; }
+
+.focus\:ring-blue-500:focus { --tw-ring-color: var(--mocha-accent) !important; }
+.focus\:border-blue-500:focus { border-color: var(--mocha-accent) !important; }

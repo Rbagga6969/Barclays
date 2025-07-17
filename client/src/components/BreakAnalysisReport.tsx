@@ -161,13 +161,13 @@ const BreakAnalysisReport: React.FC<BreakAnalysisReportProps> = ({ failures, onR
               <Target className="w-5 h-5" style={{ color: 'var(--mocha)' }} />
             </div>
           </div>
-          <div className="bg-blue-50 rounded-lg p-4">
+          <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--mocha-bg)' }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-blue-600">Economic</p>
-                <p className="text-2xl font-bold text-blue-900">{stats.economic}</p>
+                <p className="text-sm" style={{ color: 'var(--mocha)' }}>Economic</p>
+                <p className="text-2xl font-bold" style={{ color: 'var(--mocha-dark)' }}>{stats.economic}</p>
               </div>
-              <ArrowUpRight className="w-5 h-5 text-blue-400" />
+              <ArrowUpRight className="w-5 h-5" style={{ color: 'var(--mocha)' }} />
             </div>
           </div>
         </div>

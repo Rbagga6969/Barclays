@@ -54,7 +54,7 @@ const TradeConfirmationModal: React.FC<TradeConfirmationModalProps> = ({
                 margin: 20px;
               }
               .document-header {
-                background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+                background: linear-gradient(135deg, var(--mocha-dark) 0%, var(--mocha) 100%);
                 color: white;
                 padding: 30px;
                 text-align: center;
@@ -90,7 +90,7 @@ const TradeConfirmationModal: React.FC<TradeConfirmationModalProps> = ({
                 background: white;
                 padding: 15px;
                 border-radius: 8px;
-                border-left: 4px solid #3b82f6;
+                border-left: 4px solid var(--mocha);
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
               }
               .detail-label {
@@ -211,7 +211,7 @@ const TradeConfirmationModal: React.FC<TradeConfirmationModalProps> = ({
               }
               .footer-info .ref-number {
                 font-weight: bold;
-                color: #60a5fa;
+                color: var(--mocha-accent);
               }
               @media print { 
                 .no-print { display: none; } 

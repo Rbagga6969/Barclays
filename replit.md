@@ -7,6 +7,7 @@ This is a comprehensive trade confirmation and lifecycle management system built
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Color scheme: Mocha theme throughout the system (replaced red/blue colors).
 
 ## System Architecture
 
@@ -21,7 +22,7 @@ Preferred communication style: Simple, everyday language.
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js
 - **Language**: TypeScript with ES modules
-- **Database**: PostgreSQL with Drizzle ORM (fully integrated with 399 trades migrated, reduced from 500 to 400 as requested)
+- **Database**: PostgreSQL with Drizzle ORM (fully integrated with 400 trades migrated, reduced from 500 to 400 as requested)
 - **Session Management**: connect-pg-simple for PostgreSQL session store
 - **Development**: Hot reload with Vite middleware integration
 - **Data Storage**: Database-backed storage replaced in-memory storage
