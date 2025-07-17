@@ -21,9 +21,10 @@ Preferred communication style: Simple, everyday language.
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js
 - **Language**: TypeScript with ES modules
-- **Database**: PostgreSQL with Drizzle ORM
+- **Database**: PostgreSQL with Drizzle ORM (fully integrated with 399 trades migrated)
 - **Session Management**: connect-pg-simple for PostgreSQL session store
 - **Development**: Hot reload with Vite middleware integration
+- **Data Storage**: Database-backed storage replaced in-memory storage
 
 ### Project Structure
 - **Client**: React frontend located in `/client/` directory
@@ -67,18 +68,19 @@ Preferred communication style: Simple, everyday language.
 5. **Settlement**: Final trade settlement and completion
 
 ### Data Processing
-1. **CSV Import**: Generic CSV parsing with intelligent column mapping
-2. **Data Transformation**: Convert generic data to typed trade objects
-3. **Validation**: Schema validation using Zod
-4. **Storage**: Drizzle ORM with PostgreSQL persistence
-5. **Real-time Updates**: Live status updates across the system
+1. **Database Migration**: Successfully migrated 200 equity trades and 199 FX trades from CSV files
+2. **Data Transformation**: Convert CSV data to typed database objects with Drizzle ORM
+3. **Validation**: Schema validation using Zod with database constraints
+4. **Storage**: PostgreSQL database with Drizzle ORM for full data persistence
+5. **Real-time Updates**: Live status updates across the system via database
 
 ## External Dependencies
 
 ### Database
-- **PostgreSQL**: Primary database using Neon serverless PostgreSQL
+- **PostgreSQL**: Primary database using Neon serverless PostgreSQL (active with 399 trades)
 - **Drizzle ORM**: Type-safe database operations with migration support
 - **Connection**: Environment-based DATABASE_URL configuration
+- **Data Migration**: Complete CSV-to-database migration with data validation
 
 ### UI Components
 - **Shadcn/UI**: Modern component library with accessibility
