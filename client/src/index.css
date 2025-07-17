@@ -1,3 +1,11 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --mocha: #a0826d;
+  --mocha-light: #c4a688;
+  --mocha-dark: #8b6f5a;
+  --mocha-bg: #f5f2ee;
+  --mocha-border: #d4c4b0;
+}

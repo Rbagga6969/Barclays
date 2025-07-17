@@ -43,7 +43,7 @@ const BreakAnalysisReport: React.FC<BreakAnalysisReportProps> = ({ failures, onR
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Open':
-        return <AlertTriangle className="w-4 h-4 text-purple-500" />;
+        return <AlertTriangle className="w-4 h-4" style={{ color: 'var(--mocha)' }} />;
       case 'In Progress':
         return <Clock className="w-4 h-4 text-yellow-500" />;
       case 'Resolved':
@@ -57,7 +57,7 @@ const BreakAnalysisReport: React.FC<BreakAnalysisReportProps> = ({ failures, onR
 
   const getImpactBadge = (impact: string) => {
     const colors = {
-      Critical: 'bg-purple-100 text-purple-800 border-purple-200',
+      Critical: 'bg-orange-100 text-orange-800 border-orange-200',
       High: 'bg-orange-100 text-orange-800 border-orange-200',
       Medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
       Low: 'bg-green-100 text-green-800 border-green-200'
@@ -152,13 +152,13 @@ const BreakAnalysisReport: React.FC<BreakAnalysisReportProps> = ({ failures, onR
               <CheckCircle className="w-5 h-5 text-green-400" />
             </div>
           </div>
-          <div className="bg-red-50 rounded-lg p-4">
+          <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--mocha-bg)' }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-red-600">Critical</p>
-                <p className="text-2xl font-bold text-red-900">{stats.critical}</p>
+                <p className="text-sm" style={{ color: 'var(--mocha)' }}>Critical</p>
+                <p className="text-2xl font-bold" style={{ color: 'var(--mocha-dark)' }}>{stats.critical}</p>
               </div>
-              <Target className="w-5 h-5 text-red-400" />
+              <Target className="w-5 h-5" style={{ color: 'var(--mocha)' }} />
             </div>
           </div>
           <div className="bg-blue-50 rounded-lg p-4">

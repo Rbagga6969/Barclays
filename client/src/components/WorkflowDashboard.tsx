@@ -24,6 +24,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedWorkflow, setSelectedWorkflow] = useState<TradeWorkflow | null>(null);
 
   // Categorize workflows by stage
   const workflowsByStage = useMemo(() => {
@@ -128,13 +129,17 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
               : 'Unknown';
 
             return (
-              <div key={workflow.tradeId} className="border rounded-lg p-3 hover:bg-gray-50">
+              <div 
+                key={workflow.tradeId} 
+                className="border rounded-lg p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => setSelectedWorkflow(workflow)}
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">
                       <span className="font-medium text-gray-900">{workflow.tradeId}</span>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        workflow.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                        workflow.priority === 'urgent' ? 'bg-orange-100 text-orange-800' :
                         workflow.priority === 'high' ? 'bg-orange-100 text-orange-800' :
                         workflow.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800'
@@ -144,10 +149,12 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         tradeStatus === 'Confirmed' ? 'bg-green-100 text-green-800' :
                         tradeStatus === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                        tradeStatus === 'Failed' ? 'bg-red-100 text-red-800' :
+                        tradeStatus === 'Failed' ? 'style-in:style-mocha-bg style-in:style-mocha-dark' :
                         tradeStatus === 'Settled' ? 'bg-blue-100 text-blue-800' :
                         'bg-gray-100 text-gray-800'
-                      }`}>
+                      }`}
+                      style={tradeStatus === 'Failed' ? { backgroundColor: 'var(--mocha-bg)', color: 'var(--mocha-dark)' } : {}}
+                      >
                         {tradeStatus}
                       </span>
                     </div>
@@ -401,7 +408,7 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
                     {action.description}
                   </h4>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    action.status === 'overdue' ? 'bg-red-100 text-red-800' :
+                    action.status === 'overdue' ? 'bg-orange-100 text-orange-800' :
                     'bg-yellow-100 text-yellow-800'
                   }`}>
                     {action.status}
@@ -426,6 +433,174 @@ const WorkflowDashboard: React.FC<WorkflowDashboardProps> = ({ workflows, action
           </div>
         </div>
       </div>
+
+      {/* Workflow Detail Modal */}
+      {selectedWorkflow && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setSelectedWorkflow(null)}></div>
+
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <Activity className="h-6 w-6 text-blue-600 mr-2" />
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Workflow Details - {selectedWorkflow.tradeId}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setSelectedWorkflow(null)}
+                    className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Trade Information */}
+                <div className="mb-6 bg-gray-50 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Trade Information</h4>
+                  {(() => {
+                    const correspondingTrade = trades.find(t => t.tradeId === selectedWorkflow.tradeId);
+                    if (!correspondingTrade) return <p className="text-sm text-gray-500">Trade details not found</p>;
+                    
+                    const isEquityTrade = 'orderId' in correspondingTrade;
+                    return (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">Trade Type:</span>
+                          <p className="font-medium">{isEquityTrade ? 'Equity' : 'FX'}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Counterparty:</span>
+                          <p className="font-medium">{correspondingTrade.counterparty}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Status:</span>
+                          <p className="font-medium">{isEquityTrade ? correspondingTrade.confirmationStatus : correspondingTrade.confirmationStatus}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Trade Date:</span>
+                          <p className="font-medium">{correspondingTrade.tradeDate}</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Workflow Steps */}
+                <div className="mb-6">
+                  <h4 className="text-sm font-medium text-gray-900 mb-4">Workflow Progress</h4>
+                  <div className="space-y-3">
+                    {selectedWorkflow.steps.map((step, index) => {
+                      const isCompleted = step.status === 'completed';
+                      const isInProgress = step.status === 'in-progress';
+                      const isFailed = step.status === 'failed';
+                      const requiresAction = step.status === 'requires-action';
+                      
+                      return (
+                        <div key={step.id} className="flex items-center space-x-3">
+                          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                            isCompleted ? 'bg-green-100' :
+                            isInProgress ? 'bg-blue-100' :
+                            isFailed ? 'bg-orange-100' :
+                            requiresAction ? 'bg-yellow-100' :
+                            'bg-gray-100'
+                          }`}>
+                            {isCompleted ? (
+                              <CheckCircle className="w-5 h-5 text-green-600" />
+                            ) : isInProgress ? (
+                              <Clock className="w-5 h-5 text-blue-600" />
+                            ) : isFailed ? (
+                              <AlertTriangle className="w-5 h-5 text-orange-600" />
+                            ) : requiresAction ? (
+                              <UserCheck className="w-5 h-5 text-yellow-600" />
+                            ) : (
+                              <span className="text-gray-400 text-sm font-medium">{index + 1}</span>
+                            )}
+                          </div>
+                          
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <h5 className={`text-sm font-medium ${
+                                isCompleted ? 'text-green-900' :
+                                isInProgress ? 'text-blue-900' :
+                                isFailed ? 'text-orange-900' :
+                                requiresAction ? 'text-yellow-900' :
+                                'text-gray-500'
+                              }`}>
+                                {step.name}
+                              </h5>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                isCompleted ? 'bg-green-100 text-green-800' :
+                                isInProgress ? 'bg-blue-100 text-blue-800' :
+                                isFailed ? 'bg-orange-100 text-orange-800' :
+                                requiresAction ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {step.status.replace('-', ' ')}
+                              </span>
+                            </div>
+                            {step.description && (
+                              <p className="text-xs text-gray-600 mt-1">{step.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Workflow Actions */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Related Actions</h4>
+                  {(() => {
+                    const workflowActions = actions.filter(action => action.tradeId === selectedWorkflow.tradeId);
+                    if (workflowActions.length === 0) {
+                      return <p className="text-sm text-gray-500">No pending actions for this workflow</p>;
+                    }
+                    
+                    return (
+                      <div className="space-y-2">
+                        {workflowActions.map(action => (
+                          <div key={action.id} className="border-l-4 border-blue-400 pl-3 py-2">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium text-gray-900">{action.description}</p>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                action.status === 'overdue' ? 'bg-orange-100 text-orange-800' :
+                                action.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {action.status}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-600">Type: {action.type}</p>
+                            {action.dueDate && (
+                              <p className="text-xs text-gray-600">Due: {new Date(action.dueDate).toLocaleDateString()}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => setSelectedWorkflow(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

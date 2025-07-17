@@ -397,13 +397,7 @@ startxref
                           <Eye className="h-3 w-3 mr-1" />
                           View
                         </button>
-                        <button
-                          onClick={() => handleDownloadPDF(trade)}
-                          className="absolute top-0 right-0 -mt-1 -mr-1 inline-flex items-center px-1 py-1 border border-transparent text-xs font-medium rounded-full text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-                          title="Download PDF"
-                        >
-                          <Download className="h-3 w-3" />
-                        </button>
+
                       </div>
                       {tradeFailure && (
                         <button

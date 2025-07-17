@@ -8,7 +8,7 @@ interface AnalyticsDashboardProps {
   fxTrades: FXTrade[];
 }
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#a0826d', '#8B5CF6', '#06B6D4'];
 
 const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ equityTrades, fxTrades }) => {
   const allTrades = [...equityTrades, ...fxTrades];
@@ -124,9 +124,9 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ equityTrades, f
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Failure Rate</p>
-              <p className="text-2xl font-bold text-red-600">{riskMetrics.failureRate}%</p>
+              <p className="text-2xl font-bold" style={{ color: 'var(--mocha-dark)' }}>{riskMetrics.failureRate}%</p>
             </div>
-            <AlertTriangle className="h-8 w-8 text-red-600" />
+            <AlertTriangle className="h-8 w-8" style={{ color: 'var(--mocha)' }} />
           </div>
           <p className="text-xs text-gray-500 mt-2">↓ 2.1% from last month</p>
         </div>
